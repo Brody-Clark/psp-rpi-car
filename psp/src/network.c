@@ -1,118 +1,127 @@
 #include "network.h"
 
-void init_networking(){
-	sceNetInit(128 * 1024, 42, 4 * 1024, 42, 4 * 1024);
+#include <limits.h>
+#include <string.h>
 
-	sceNetInetInit();
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <pspkernel.h>
+#include <pspnet.h>
+#include <pspnet_apctl.h>
+#include <pspnet_inet.h>
+#include <psputility.h>
 
-	sceNetApctlInit(0x8000, 48);
-}
+#include "config.h"
+#include "platform.h"
 
-void shutdown_networking()
+static int server_socket = -1;
+static bool net_initialized;
+static bool inet_initialized;
+static bool apctl_initialized;
+
+static bool receive_exact(uint8_t *buffer, size_t length)
 {
-	sceNetApctlTerm();
-	sceNetInetTerm();
-	sceNetTerm();
-}
+	size_t received = 0;
 
-bool start_client(){
-	g_recvThid = sceKernelCreateThread("receive_thread", receiveThread, THREAD_PRIORITY_NET_RECEIVE, 0x10000, PSP_THREAD_ATTR_USER, NULL);
-	if (g_recvThid <= 0)
+	while (received < length)
 	{
-		printf("Failed to create receive thread...\n");
-
-		printf("ERROR CODE: %i", g_recvThid);
-		shutdown_client();
-		return 0;
-	}
-	int success = sceKernelStartThread(g_recvThid, 0, NULL);
-	if (success < 0)
-	{
-		printf("Failed to start receive thread...\n");
-		printf("ERROR CODE: %i", success);
-		shutdown_client();
-		return 0;
-	}
-	printf("Started receive thread\n");
-
-	g_sendThid = sceKernelCreateThread("send_thread", sendThread, THREAD_PRIORITY_NET_SEND, 0x10000, PSP_THREAD_ATTR_USER, NULL);
-	if (g_sendThid <= 0)
-	{
-		printf("Failed to create send thread...\n");
-
-		printf("ERROR CODE: %i", g_sendThid);
-		shutdown_client();
-		return 0;
-	}
-	success = sceKernelStartThread(g_sendThid, 0, NULL);
-	if (success < 0)
-	{
-		printf("Failed to start send thread...\n");
-		printf("ERROR CODE: %i", success);
-		shutdown_client();
-		return 0;
-	}
-}
-
-void shutdown_client(){
-	if (g_recvThid > 0)
+		int result = sceNetInetRecv(server_socket, buffer + received,
+									(int)(length - received), 0);
+		if (result <= 0)
 		{
-			sceKernelWaitThreadEnd(g_recvThid, 0);
-			sceKernelDeleteThread(g_recvThid);
+			platform_log("Network receive failed (%d).\n",
+						 sceNetInetGetErrno());
+			return false;
 		}
-
-		if (g_sendThid > 0)
-		{
-			sceKernelWaitThreadEnd(g_sendThid, 0);
-			sceKernelDeleteThread(g_sendThid);
-		}
-
-		if (g_serverSocket > 0)
-		{
-			sceNetInetClose(g_serverSocket);
-		}
-		sceNetInetShutdown(g_serverSocket, 2); // 2 is for both send and receive
-		shutdown_networking();
-}
-
-bool connect(const char *server_ip, int server_port, int *out_socket){
-	struct sockaddr_in server_addr;
-	int sock;
-
-	sock = sceNetInetSocket(AF_INET, SOCK_STREAM, 0);
-	if (sock < 0)
-	{
-		printf("Failed to create socket\n");
-		return false;
+		received += (size_t)result;
 	}
 
-	memset(&server_addr, 0, sizeof(server_addr));
-	server_addr.sin_family = AF_INET;
-	server_addr.sin_port = htons(server_port);
-	server_addr.sin_addr.s_addr = inet_addr(server_ip);
-
-	printf("Connecting to server %s:%d...\n", server_ip, server_port);
-	if (sceNetInetConnect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
-	{
-		printf("Failed to connect to server\n");
-		int err = sceNetInetGetErrno();
-		printf("...errno: %d\n", err);
-		sceNetInetClose(sock);
-		return false;
-	}
-
-	int flag = 1;
-	sceNetInetSetsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
-
-	*out_socket = sock;
 	return true;
 }
 
+static bool send_exact(const uint8_t *buffer, size_t length)
+{
+	size_t sent = 0;
 
-bool connect_to_access_point(){   
-	bool done = false;
+	while (sent < length)
+	{
+		int result = sceNetInetSend(server_socket, buffer + sent,
+									(int)(length - sent), 0);
+		if (result <= 0)
+		{
+			platform_log("Network send failed (%d).\n",
+						 sceNetInetGetErrno());
+			return false;
+		}
+		sent += (size_t)result;
+	}
 
+	return true;
+}
+
+bool network_initialize(void)
+{
+    sceUtilityLoadNetModule(PSP_NET_MODULE_COMMON);
+	sceUtilityLoadNetModule(PSP_NET_MODULE_INET);
+	int result = sceNetInit(128 * 1024, 42, 4 * 1024, 42, 4 * 1024);
+	if (result < 0)
+	{
+		platform_log("sceNetInit failed (%d).\n", result);
+		return false;
+	}
+	net_initialized = true;
+
+	result = sceNetInetInit();
+	if (result < 0)
+	{
+		platform_log("sceNetInetInit failed (%d).\n", result);
+		network_shutdown();
+		return false;
+	}
+	inet_initialized = true;
+
+	result = sceNetApctlInit(0x8000, 48);
+	if (result < 0)
+	{
+		platform_log("sceNetApctlInit failed (%d).\n", result);
+		network_shutdown();
+		return false;
+	}
+	apctl_initialized = true;
+
+	return true;
+}
+
+void network_shutdown(void)
+{
+	if (server_socket >= 0)
+	{
+		sceNetInetShutdown(server_socket, 2);
+		sceNetInetClose(server_socket);
+		server_socket = -1;
+	}
+	if (apctl_initialized)
+	{
+		sceNetApctlTerm();
+		apctl_initialized = false;
+	}
+	if (inet_initialized)
+	{
+		sceNetInetTerm();
+		inet_initialized = false;
+	}
+	if (net_initialized)
+	{
+		sceNetTerm();
+		net_initialized = false;
+	}
+}
+
+bool network_connect_access_point(void)
+{
 	pspUtilityNetconfData data;
+	struct pspUtilityNetconfAdhoc adhoc_parameter;
 	memset(&data, 0, sizeof(data));
 	data.base.size = sizeof(data);
 	data.base.language = PSP_SYSTEMPARAM_LANGUAGE_ENGLISH;
@@ -122,100 +131,142 @@ bool connect_to_access_point(){
 	data.base.fontThread = 18;
 	data.base.soundThread = 16;
 	data.action = PSP_NETCONF_ACTION_CONNECTAP;
+	memset(&adhoc_parameter, 0, sizeof(adhoc_parameter));
+	data.adhocparam = &adhoc_parameter;
 
-	struct pspUtilityNetconfAdhoc adhocparam;
-	memset(&adhocparam, 0, sizeof(adhocparam));
-	data.adhocparam = &adhocparam;
-
-	sceUtilityNetconfInitStart(&data);
-
-	while (!done)
+	if (sceUtilityNetconfInitStart(&data) < 0)
 	{
-		draw_start();
+		platform_log("Could not start the network connection dialog.\n");
+		return false;
+	}
 
+    bool complete = false;
+    bool shutdown_started = false;
+	while (!complete)
+	{
 		switch (sceUtilityNetconfGetStatus())
 		{
 		case PSP_UTILITY_DIALOG_NONE:
 			break;
-
 		case PSP_UTILITY_DIALOG_VISIBLE:
 			sceUtilityNetconfUpdate(1);
 			break;
-
 		case PSP_UTILITY_DIALOG_QUIT:
-			sceUtilityNetconfShutdownStart();
+			if (!shutdown_started)
+			{
+				sceUtilityNetconfShutdownStart();
+				shutdown_started = true;
+			}
 			break;
-
 		case PSP_UTILITY_DIALOG_FINISHED:
-			done = true;
+			complete = true;
 			break;
-
 		default:
+			sceKernelDelayThread(10000);
 			break;
 		}
-		draw_end();
-		if (done)
-		{
-			return true;
-		}
+		sceKernelDelayThread(10000);
 	}
-	return false;
+
+    int access_point_state = PSP_NET_APCTL_STATE_DISCONNECTED;
+	return sceNetApctlGetState(&access_point_state) >= 0 &&
+		   access_point_state == PSP_NET_APCTL_STATE_GOT_IP;
 }
 
-
-bool connectToServer(const char *server_ip, int server_port, int *out_socket, u8 retries=0, u8 wait_sec=0)
+bool network_connect_server(void)
 {
-	for(u8 i=0; i<=retries; i++)
+	struct sockaddr_in server_address;
+	int socket_fd;
+	int no_delay = 1;
+
+	if (server_socket >= 0)
 	{
-		if (!connect(server_ip, server_port, &out_socket, 10, 3))
-		{
-			printf("Failed to connect to server...Retrying...\n");
-			sceKernelDelayThread(SEC_TO_MICROSEC(wait_sec));
-		}
-		else
-		{
-			return true;
-		}
+		return true;
 	}
+
+	socket_fd = sceNetInetSocket(AF_INET, SOCK_STREAM, 0);
+	if (socket_fd < 0)
+	{
+		platform_log("Could not create server socket (%d).\n", socket_fd);
+		return false;
+	}
+
+	memset(&server_address, 0, sizeof(server_address));
+	server_address.sin_family = AF_INET;
+	server_address.sin_port = htons(PSP_SERVER_PORT);
+	server_address.sin_addr.s_addr = inet_addr(PSP_SERVER_IP);
+
+	platform_log("Connecting to %s:%d...\n", PSP_SERVER_IP, PSP_SERVER_PORT);
+	if (sceNetInetConnect(socket_fd, (struct sockaddr *)&server_address,
+						  sizeof(server_address)) < 0)
+	{
+		platform_log("Could not connect to server (%d).\n",
+					 sceNetInetGetErrno());
+		sceNetInetClose(socket_fd);
+		return false;
+	}
+
+	if (sceNetInetSetsockopt(socket_fd, IPPROTO_TCP, TCP_NODELAY,
+							 &no_delay, sizeof(no_delay)) < 0)
+	{
+		platform_log("Could not disable TCP Nagle buffering (%d).\n",
+					 sceNetInetGetErrno());
+		sceNetInetClose(socket_fd);
+		return false;
+	}
+
+	server_socket = socket_fd;
+	return true;
 }
 
-static int recieve_data(int socket, char *buf, int len)
+bool network_send_command(const psp_command_t *command)
 {
-	int total = 0;
-	while (total < len)
+	if (server_socket < 0 || command == NULL)
 	{
-		int r = sceNetInetRecv(socket, buf + total, len - total, 0);
-		if (r <= 0)
-			return r;
-		total += r;
+		return false;
 	}
-	return total;
+
+	return send_exact((const uint8_t *)command, sizeof(*command));
 }
 
-int read_frame(int socket, u8 *buffer, int maxSize)
+bool network_receive_frame(uint8_t *buffer, size_t capacity,
+						   size_t *frame_size)
 {
-	uint32_t netFrameSize;
-	if (recieve_data(socket, (char *)&netFrameSize, sizeof(netFrameSize)) != sizeof(netFrameSize))
+	uint32_t network_size;
+	uint32_t payload_size;
+
+	if (server_socket < 0 || buffer == NULL || frame_size == NULL ||
+		capacity == 0 || capacity > INT_MAX)
 	{
-		printf("recieved data not equal to expected size\n");
-		return -1;
+		return false;
 	}
 
-	int frameSize = ntohl(netFrameSize);
-	if (frameSize <= 0 || frameSize > maxSize)
+	if (!receive_exact((uint8_t *)&network_size, sizeof(network_size)))
 	{
-		printf("Frame size %d exceeds buffer size %d\n", frameSize, maxSize);
-		return -1;
+		return false;
 	}
 
-	if (recieve_data(socket, (char *)buffer, frameSize) != frameSize)
+	payload_size = ntohl(network_size);
+	if (payload_size == 0 || payload_size > capacity)
 	{
-		printf("Error, did not receive right frame size: %i \n", frameSize);
-		return -1;
+		platform_log("Invalid JPEG frame size: %lu bytes.\n",
+					 (unsigned long)payload_size);
+		return false;
 	}
-	return frameSize;
+
+	if (!receive_exact(buffer, payload_size))
+	{
+		return false;
+	}
+
+	*frame_size = payload_size;
+	return true;
 }
 
-int get_ap_status(int& ap_status){
-	return sceNetApctlGetState(ap_status);
+bool network_access_point_is_connected(void)
+{
+	int state = PSP_NET_APCTL_STATE_DISCONNECTED;
+
+	return sceNetApctlGetState(&state) >= 0 &&
+		   state == PSP_NET_APCTL_STATE_GOT_IP;
 }

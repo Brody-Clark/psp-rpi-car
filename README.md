@@ -30,15 +30,20 @@ psp-pi-car/
 │   └── setup_server.sh       # Automates AP mode, dependencies, and service config
 ├── docs/                     # Schematics, pinouts, and network protocols
 │   └── protocol.md
-├── psp/                      # PSP Client source code & build files
-│   ├── Makefile
-│   └── src/
+├── psp/                      # PSP client source code & CMake build
+│   ├── CMakeLists.txt
+│   ├── include/               # Public module interfaces
+│   └── src/                   # Application and PSP platform modules
 └── raspberry_pi/             # Raspberry Pi Server source code
     ├── server.py             # Main network listener & command router
     ├── camera/               # Video streaming module
     ├── motors/               # Freenove motor abstraction layer
     └── freenove/             # Original vendor scripts
 ```
+
+The PSP client keeps application flow in `psp/src/app.c`; controller input,
+network transport, JPEG decoding, display output, and PSP lifecycle services
+are implemented in separate modules with public interfaces in `psp/include/`.
 
 ## Requirements
 
@@ -98,10 +103,10 @@ To build the PSP client from source you will need the pspsdk toolchain:
 - pspdev repo: https://github.com/pspdev/pspdev
 - pspsdk repo: https://github.com/pspdev/pspsdk
 
-Compile the binary using the included Makefile:
+Configure and build with the PSPSDK `psp-cmake` wrapper:
 ```bash
-cd psp/
-make
+psp-cmake -S psp -B build-psp
+cmake --build build-psp
 ```
 
 ## Troubleshooting
@@ -117,6 +122,3 @@ Contributions welcome. Please see [CONTRIBUTING.md](/CONTRIBUTING.md) for more d
 ## License
 
 This project is licensed under the MIT License. See the included [LICENSE](LICENSE) file for full details.
-
-
-

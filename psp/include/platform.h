@@ -1,12 +1,28 @@
-#define SCR_WIDTH (480)
-#define SCR_HEIGHT (272)
-#define PIXEL_SIZE (4)
-#define FRAME_SIZE (SCR_WIDTH * SCR_HEIGHT * PIXEL_SIZE)
+#ifndef PSP_PLATFORM_H
+#define PSP_PLATFORM_H
 
-#define printf pspDebugScreenPrintf
+#include <stdbool.h>
 
-static void debug_clear_screen(){
-    pspDebugScreenInit();
-	pspDebugScreenSetXY(0, 0);
-	pspDebugScreenClear();
-}
+/**
+ * Initialize platform services, including the PSP exit callback.
+ *
+ * @return true when the callback thread is ready.
+ */
+bool platform_initialize(void);
+
+/** Return whether the application should continue running. */
+bool platform_is_running(void);
+
+/** Request that the application leave its main loop. */
+void platform_request_exit(void);
+
+/** Release platform resources and return to the PSP menu. */
+void platform_shutdown(void);
+
+/** Clear the PSP debug text console. */
+void platform_clear_console(void);
+
+/** Write a formatted message to the PSP debug text console. */
+void platform_log(const char *format, ...);
+
+#endif

@@ -1,20 +1,29 @@
-#include <pspdisplay.h>
-#include <pspgu.h>
-#include <pspgum.h>
+#ifndef PSP_DISPLAY_H
+#define PSP_DISPLAY_H
 
-static inline uint32_t ARGB(uint8_t a, uint8_t r, uint8_t g, uint8_t b)
-{
-	return ((uint32_t)a << 24) | ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)b;
-}
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
-static inline uint32_t COLOR_BLACK(ARGB(255,0,0,0));
-static inline uint32_t COLOR_WHITE(ARGB(255,255,255,255));
+/**
+ * Initialize the PSP display backend.
+ *
+ * @return true when the display is ready.
+ */
+bool display_initialize(void);
 
-void init_display();
+/** Release resources owned by the display backend. */
+void display_shutdown(void);
 
-void shutdown_display();
+/**
+ * Present a tightly packed RGBA8888 image.
+ *
+ * @param pixels Image pixels.
+ * @param width Image width in pixels.
+ * @param height Image height in pixels.
+ * @return true when the image was submitted for display.
+ */
+bool display_present_rgba8888(const uint32_t *pixels, size_t width,
+							  size_t height);
 
-void draw_start();
-
-void draw_end();
-
+#endif

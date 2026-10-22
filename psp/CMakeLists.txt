@@ -1,29 +1,37 @@
 cmake_minimum_required(VERSION 3.11)
+project(psp_rpi_car C)
+
 set(CMAKE_C_STANDARD 11)
-project(controls_v1)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS ON)
 
-add_executable(${PROJECT_NAME} main.c)
+add_executable(${PROJECT_NAME}
+    src/app.c
+    src/display.c
+    src/input.c
+    src/main.c
+    src/network.c
+    src/platform.c
+    src/utils.c
+    src/video.c
+)
 
+target_include_directories(${PROJECT_NAME} PRIVATE include)
+target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)
 target_link_libraries(${PROJECT_NAME} PRIVATE
     pspdebug
     pspdisplay
-    pspge
     pspctrl
     psputility
     pspjpeg
     pspmpeg
     pspnet
-    pspgu 
-    pspgum
     pspnet_inet
-    pspnet_resolver
     pspnet_apctl
+    pspuser
+    pspge
 )
 
-# target_link_libraries(${PROJECT_NAME} PRIVATE ${PSP_SDK_LIBS})
-
-
-# Create an EBOOT.PBP file
 create_pbp_file(
     TARGET ${PROJECT_NAME}
     ICON_PATH NULL

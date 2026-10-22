@@ -1,15 +1,35 @@
 #include "input.h"
 
-PSPCommand convertPadToStruct(SceCtrlData pad)
+#include <stddef.h>
+
+#include <pspctrl.h>
+
+bool input_initialize(void)
 {
-	PSPCommand cmd;
-	cmd.buttons = pad.Buttons;
-	cmd.lx = pad.Lx;
-	cmd.ly = pad.Ly;
-	return cmd;
+	if (sceCtrlSetSamplingCycle(0) < 0)
+	{
+		return false;
+	}
+
+	return sceCtrlSetSamplingMode(PSP_CTRL_MODE_ANALOG) >= 0;
 }
 
-PSPCommand get_inputs(){
-    sceCtrlReadBufferPositive(&pad, 1);
-	return convertPadToStruct(pad);
+bool input_read_command(psp_command_t *command)
+{
+	SceCtrlData pad;
+
+	if (command == NULL)
+	{
+		return false;
+	}
+
+	if (sceCtrlReadBufferPositive(&pad, 1) < 1)
+	{
+		return false;
+	}
+	command->buttons = pad.Buttons;
+	command->analog_x = pad.Lx;
+	command->analog_y = pad.Ly;
+
+	return true;
 }

@@ -1,78 +1,91 @@
 #include "video.h"
-#include <stdint.h>
-#include "../include/display.h"
 
-#define BUF_WIDTH (512)
+#include <limits.h>
 
-static u8 g_decodeBuf[480 * 272 * 4] __attribute__((aligned(64)));
-static u8 g_displayBuf[512 * 272 * 4] __attribute__((aligned(64)));
+#include <pspjpeg.h>
+#include <psputility.h>
+#include <pspmpeg.h>
+#include <pspmpegbase.h>
 
+#include "config.h"
+#include "platform.h"
 
+static bool jpeg_decoder_initialized;
+static bool jpeg_instance_created;
 
-
-void init_video()
+bool video_initialize(void)
 {
-    sceUtilityLoadNetModule(PSP_NET_MODULE_COMMON);
-	sceUtilityLoadNetModule(PSP_NET_MODULE_INET);
-	sceUtilityLoadAvModule(PSP_AV_MODULE_AVCODEC);
-	sceUtilityLoadAvModule(PSP_AV_MODULE_MPEGBASE);
+	int result = sceUtilityLoadAvModule(PSP_AV_MODULE_AVCODEC);
+    sceUtilityLoadAvModule(PSP_AV_MODULE_MPEGBASE);
 
-	int ret = sceMpegInit();
-	if (ret != 0)
+	if (result < 0)
 	{
-		printf("FAILED to load mpeg\n");
-	}
-	else
-	{
-		printf("Mpeg module init succeeded.\n");
+		platform_log("Could not load the PSP AVCODEC module (%d).\n", result);
+		return false;
 	}
 
-	ret = sceJpegInitMJpeg();
-	if (ret != 0)
+    result = sceMpegInit();
+	if (result != 0)
 	{
-		printf("FAILED to load mjpeg\n");
-	}
-	else
-	{
-		printf("MJpeg module init succeeded\n");
+		platform_log("Could not load PSP Mpeg (%d).\n", result);
+        return false;
 	}
 
-	ret =  sceJpegCreateMJpeg(SCR_WIDTH, SCR_HEIGHT);
-	if(ret < 0)
+	result = sceJpegInitMJpeg();
+	if (result < 0)
 	{
-		printf("Failed creat mjpeg??? 0x%08X\n", ret);
+		platform_log("Could not initialize the PSP JPEG decoder (%d).\n",
+					 result);
+		return false;
+	}
+	jpeg_decoder_initialized = true;
+
+	result = sceJpegCreateMJpeg(PSP_SCREEN_WIDTH, PSP_SCREEN_HEIGHT);
+	if (result < 0)
+	{
+		platform_log("Could not create the PSP JPEG decoder (%d).\n", result);
+		video_shutdown();
+		return false;
+	}
+	jpeg_instance_created = true;
+
+	return true;
+}
+
+void video_shutdown(void)
+{
+	if (jpeg_instance_created)
+	{
+		sceJpegDeleteMJpeg();
+		jpeg_instance_created = false;
+	}
+	if (jpeg_decoder_initialized)
+	{
+		sceJpegFinishMJpeg();
+		jpeg_decoder_initialized = false;
 	}
 }
-void shutdown_video(){
-    sceJpegDeleteMJpeg();
-	sceJpegFinishMJpeg();
-	sceMpegFinish();
-}
 
+bool video_decode_jpeg(const uint8_t *jpeg_data, size_t jpeg_size,
+					   uint32_t *output, size_t output_capacity)
+{
+	size_t required_pixels = PSP_SCREEN_WIDTH * PSP_SCREEN_HEIGHT;
+	int result;
 
-void draw_jpeg(u8 *jpeg_frame, int size)
-{	
-	int ret = sceJpegDecodeMJpeg(jpeg_frame, size, g_decodeBuf, 0);
-	if (ret < 0)
+	if (!jpeg_decoder_initialized || jpeg_data == NULL || output == NULL ||
+		jpeg_size == 0 || jpeg_size > INT_MAX ||
+		output_capacity < required_pixels)
 	{
-		printf("JPEG decode failed: 0x%08X\n", ret);
-		return;
+		return false;
 	}
-	
-	for (int y = 0; y < 272; y++)
-    {
-        memcpy(
-            g_displayBuf + (y * 512 * 4),
-            g_decodeBuf  + (y * 480 * 4),
-            480 * 4
-        );
-    }
 
-	if (sceDisplaySetFrameBuf((void *)g_displayBuf, BUF_WIDTH,
-						  PSP_DISPLAY_PIXEL_FORMAT_8888,
-						  PSP_DISPLAY_SETBUF_NEXTVSYNC) != 0)
-						  {
-							printf("Failed to draw display frame buffer.\n");
+	result = sceJpegDecodeMJpeg((u8 *)jpeg_data, (SceSize)jpeg_size,
+								(u8 *)output, 0);
+	if (result < 0)
+	{
+		platform_log("JPEG decode failed (%d).\n", result);
+		return false;
+	}
 
-						  }
+	return true;
 }
