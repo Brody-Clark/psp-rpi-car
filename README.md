@@ -35,6 +35,7 @@ psp-pi-car/
 │   └── src/                   # Application and PSP platform modules
 └── raspberry_pi/             # Raspberry Pi Server source code
     ├── server.py             # Main network listener & command router
+    ├── server.ini            # Listener, video, and logging configuration
     ├── camera/               # Video streaming module
     ├── motors/               # Freenove motor abstraction layer
     └── freenove/             # Original vendor scripts
@@ -78,11 +79,16 @@ To get started, follow these steps:
       > 1. Use an ethernet connection
       > 2. Use an additional wifi adapter on the Pi
 
-   - Run the car server:
+   - The setup script installs and starts the `psp-rpi-car.service` systemd
+     service. Edit `raspberry_pi/server.ini` to change the listener, video
+     source, or logging settings, then restart the service:
       ```bash
-      cd raspberry_pi
-      python3 server.py
+      sudo systemctl restart psp-rpi-car.service
       ```
+      Check service status with `sudo systemctl status psp-rpi-car.service`.
+      When file logging is enabled, logs are written to
+      `raspberry_pi/logs/server.log`; otherwise use
+      `sudo journalctl -u psp-rpi-car.service`.
 
 3. Prepare the PSP Client:
    - Download the latest release (EBOOT.PBP) from Releases. If building from source, follow [Building from source](#building-from-source).
@@ -121,6 +127,23 @@ sudo systemctl stop hostapd dnsmasq
 sudo systemctl start hostapd dnsmasq
 ```
 - Build errors: Ensure pspsdk is installed and in PATH and you are compiling within WSL if on Windows.
+
+## Raspberry Pi Server Configuration
+
+The server reads `raspberry_pi/server.ini` by default. You can also run it
+directly with `python3 raspberry_pi/server.py --config /path/to/server.ini`.
+Relative video-source and log-file paths are resolved relative to the config
+file, so the service can be started from any working directory.
+
+- Set `[logging] enabled = false` to disable application logging. Otherwise,
+  `level` controls the verbosity and `file` selects an optional log file
+  (leave it empty to log only to the console/system journal).
+- Set `[video] source` to an FFmpeg-readable file, device, or stream URL. Video
+  can be turned off with `[video] enabled = false`.
+- The TCP listener remains active after a client disconnects and accepts a
+  subsequent PSP connection. Controller command routing is isolated in
+  `handle_input_command()` so it can later be connected to the Freenove
+  motor-control modules independently of the network transport.
 
 ## License
 
