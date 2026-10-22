@@ -2,6 +2,7 @@
 #define PSP_PLATFORM_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 /**
  * Initialize platform services, including the PSP exit callback.
@@ -24,5 +25,8 @@ void platform_clear_console(void);
 
 /** Write a formatted message to the PSP debug text console. */
 void platform_log(const char *format, ...);
+
+/** Wait a set number of seconds. */
+void platform_wait_s(uint8_t seconds);
 
 #endif

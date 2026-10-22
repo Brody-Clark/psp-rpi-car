@@ -11,7 +11,6 @@ PSP Raspberry Pi Car (psp-rpi-car) lets you remotely connect a Sony PSP to a Ras
 - [Building from source](#building-from-source)
 - [Usage](#usage)
 - [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
 - [License](#license)
 - [About / Contact](#about--contact)
 
@@ -41,9 +40,11 @@ psp-pi-car/
     └── freenove/             # Original vendor scripts
 ```
 
-The PSP client keeps application flow in `psp/src/app.c`; controller input,
+The PSP client starts the application via `psp/src/app.c`. Controller input,
 network transport, JPEG decoding, display output, and PSP lifecycle services
 are implemented in separate modules with public interfaces in `psp/include/`.
+The network module sends controller updates and receives video on separate
+worker threads and received threads are decoded and dipslayed by the video module. 
 
 ## Requirements
 
@@ -103,10 +104,12 @@ To build the PSP client from source you will need the pspsdk toolchain:
 - pspdev repo: https://github.com/pspdev/pspdev
 - pspsdk repo: https://github.com/pspdev/pspsdk
 
-Configure and build with the PSPSDK `psp-cmake` wrapper:
+Build this project with the PSPSDK `psp-cmake` wrapper:
 ```bash
-psp-cmake -S psp -B build-psp
-cmake --build build-psp
+mkdir build
+cd build
+psp-cmake ..
+make
 ```
 
 ## Troubleshooting
@@ -115,10 +118,6 @@ cmake --build build-psp
 - PSP won't connect: Verify the SSID and password printed by the Pi, confirm PSP firmware supports homebrew / EBOOT loading.
 - Build errors: Ensure pspsdk is installed and in PATH and you are compiling within WSL if on Windows.
 
-## Contributing
-
-Contributions welcome. Please see [CONTRIBUTING.md](/CONTRIBUTING.md) for more details.
- 
 ## License
 
 This project is licensed under the MIT License. See the included [LICENSE](LICENSE) file for full details.

@@ -16,6 +16,18 @@ bool display_initialize(void);
 void display_shutdown(void);
 
 /**
+ * Prepare and submit the background GU list for one utility-dialog frame.
+ *
+ * Call display_end_utility_frame after updating the PSP utility dialog.
+ *
+ * @return true when the GU frame was prepared successfully.
+ */
+bool display_begin_utility_frame(void);
+
+/** Wait for vblank and swap buffers after updating a utility dialog. */
+void display_end_utility_frame(void);
+
+/**
  * Present a tightly packed RGBA8888 image.
  *
  * @param pixels Image pixels.
