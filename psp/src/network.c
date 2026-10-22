@@ -18,11 +18,10 @@
 #include "platform.h"
 
 #define NETWORK_SEND_INTERVAL_US 16000
-#define NETWORK_THREAD_PRIORITY_SEND 0x18
-#define NETWORK_THREAD_PRIORITY_RECEIVE 0x19
+#define NETWORK_THREAD_PRIORITY_RECEIVE 0x18
+#define NETWORK_THREAD_PRIORITY_SEND 0x19
 #define NETWORK_THREAD_STACK_SIZE 0x10000
 #define NETWORK_WORKER_JOIN_TIMEOUT_US 250000
-#define NETWORK_SOCKET_POLL_TIMEOUT_MS 100
 
 static int server_socket = -1;
 static bool net_initialized;
@@ -63,63 +62,12 @@ static void signal_send_failure(void)
 	send_worker_running = 0;
 }
 
-static bool wait_for_socket_event(short events, volatile int *worker_running)
-{
-	SceNetInetPollfd poll_descriptor;
-
-	poll_descriptor.fd = server_socket;
-	poll_descriptor.events = events;
-
-	while (*worker_running)
-	{
-		int result;
-
-		poll_descriptor.revents = 0;
-		result = sceNetInetPoll(&poll_descriptor, 1,
-								NETWORK_SOCKET_POLL_TIMEOUT_MS);
-		if (result > 0)
-		{
-			if ((poll_descriptor.revents & events) != 0)
-			{
-				return true;
-			}
-			if ((poll_descriptor.revents &
-				 (SCE_NET_INET_POLLERR | SCE_NET_INET_POLLHUP |
-				  SCE_NET_INET_POLLNVAL)) != 0)
-			{
-				return false;
-			}
-		}
-		else if (result < 0)
-		{
-			int error = sceNetInetGetErrno();
-			if (error == EINTR)
-			{
-				continue;
-			}
-			if (*worker_running)
-			{
-				platform_log("Socket poll failed (%d).\n", error);
-			}
-			return false;
-		}
-	}
-
-	return false;
-}
-
 static bool receive_exact(uint8_t *buffer, size_t length)
 {
 	size_t received = 0;
 
 	while (received < length && receive_worker_running)
 	{
-		if (!wait_for_socket_event(SCE_NET_INET_POLLIN,
-								   &receive_worker_running))
-		{
-			return false;
-		}
-
 		int result = sceNetInetRecv(server_socket, buffer + received,
 									(int)(length - received), 0);
 		if (result <= 0)
@@ -147,12 +95,6 @@ static bool send_exact(const uint8_t *buffer, size_t length)
 
 	while (sent < length && send_worker_running)
 	{
-		if (!wait_for_socket_event(SCE_NET_INET_POLLOUT,
-								   &send_worker_running))
-		{
-			return false;
-		}
-
 		int result = sceNetInetSend(server_socket, buffer + sent,
 									(int)(length - sent), 0);
 		if (result <= 0)
@@ -309,8 +251,6 @@ static void stop_workers(void)
 	if (server_socket >= 0)
 	{
 		sceNetInetShutdown(server_socket, 2);
-		sceNetInetClose(server_socket);
-		server_socket = -1;
 	}
 	if (frame_consumed_semaphore >= 0)
 	{
@@ -342,6 +282,12 @@ static void stop_workers(void)
 			sceKernelDeleteThread(send_thread_id);
 		}
 		send_thread_id = -1;
+	}
+
+	if (server_socket >= 0)
+	{
+		sceNetInetClose(server_socket);
+		server_socket = -1;
 	}
 
 	delete_worker_semaphores();
@@ -684,18 +630,9 @@ bool network_access_point_is_connected(void)
 bool network_start_workers(void)
 {
 	int result;
-	int nonblocking = 1;
 
 	if (server_socket < 0 || receive_thread_id >= 0 || send_thread_id >= 0)
 	{
-		return false;
-	}
-
-	if (sceNetInetSetsockopt(server_socket, SOL_SOCKET, SO_NONBLOCK,
-							 &nonblocking, sizeof(nonblocking)) < 0)
-	{
-		platform_log("Could not enable nonblocking network I/O (%d).\n",
-					 sceNetInetGetErrno());
 		return false;
 	}
 

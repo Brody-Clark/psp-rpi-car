@@ -84,7 +84,8 @@ int app_run(void)
 		result = -1;
 		goto cleanup;
 	}
-
+	sceKernelDelayThread(10000);
+	display_end_utility_frame();
 	platform_clear_console();
 	platform_log("Connected. Press HOME to exit.\n");
 

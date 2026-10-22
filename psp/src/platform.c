@@ -62,8 +62,7 @@ bool platform_initialize(void)
 	callback_thread_status = 0;
 
 	callback_thread_id = sceKernelCreateThread(
-		"exit_callback_thread", callback_thread, 0x11, 0xFA0,
-		PSP_THREAD_ATTR_USER, NULL);
+		"exit_callback_thread", callback_thread, 0x11, 0xFA0, 0, NULL);
 	if (callback_thread_id < 0)
 	{
 		platform_log("Could not create exit callback thread (%d).\n",

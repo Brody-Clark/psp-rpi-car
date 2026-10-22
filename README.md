@@ -115,7 +115,11 @@ make
 ## Troubleshooting
 
 - "I lost SSH after setup": The Access Point setup disables the Pi's wifi client mode. Use ethernet, a secondary wi-fi adapter, or re-enable Wi-Fi manually after setup.
-- PSP won't connect: Verify the SSID and password printed by the Pi, confirm PSP firmware supports homebrew / EBOOT loading.
+- PSP won't connect: Verify the SSID and password printed by the Pi, confirm PSP firmware supports homebrew / EBOOT loading. If you successfully setup the server on the Pi previously but Access Point connection fails, you may need to restart the `hostapd` and `dnsmasq` services:
+```bash
+sudo systemctl stop hostapd dnsmasq
+sudo systemctl start hostapd dnsmasq
+```
 - Build errors: Ensure pspsdk is installed and in PATH and you are compiling within WSL if on Windows.
 
 ## License
