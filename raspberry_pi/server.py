@@ -15,8 +15,10 @@ from typing import Optional
 
 if __package__:
     from .psp_input import PSPInput, VehicleControls
+    from .robot_controller import RobotController
 else:
     from psp_input import PSPInput, VehicleControls
+    from robot_controller import RobotController
 
 
 @dataclass(frozen=True)
