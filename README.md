@@ -35,10 +35,13 @@ psp-pi-car/
 │   └── src/                   # Application and PSP platform modules
 └── raspberry_pi/             # Raspberry Pi Server source code
     ├── server.py             # Main network listener & command router
+    ├── psp_input.py          # Typed PSP input parsing and control mapping
     ├── server.ini            # Listener, video, and logging configuration
     ├── camera/               # Video streaming module
     ├── motors/               # Freenove motor abstraction layer
-    └── freenove/             # Original vendor scripts
+    └── freenove/
+        ├── Readme.md         # Freenove attribution and license information
+        └── Server/mDev.py    # Freenove shield I2C control module
 ```
 
 The PSP client starts the application via `psp/src/app.c`. Controller input,
@@ -46,6 +49,14 @@ network transport, JPEG decoding, display output, and PSP lifecycle services
 are implemented in separate modules with public interfaces in `psp/include/`.
 The network module sends controller updates and receives video on separate
 worker threads and received threads are decoded and dipslayed by the video module. 
+
+The Raspberry Pi server parses each six-byte controller packet into a
+`PSPInput` dataclass and maps its buttons to normalized `VehicleControls`:
+D-pad directions control camera horizontal/vertical movement, L/R control
+vehicle steering, and Triangle/X control forward/reverse throttle. The original
+Freenove GUI, TCP server, client, and startup files are not part of this server but
+`freenove/Server/mDev.py` is retained as the shield-control module for a custom
+entry point.
 
 ## Requirements
 
@@ -80,14 +91,17 @@ To get started, follow these steps:
       > 2. Use an additional wifi adapter on the Pi
 
    - The setup script installs and starts the `psp-rpi-car.service` systemd
-     service. Edit `raspberry_pi/server.ini` to change the listener, video
+     service. You can edit `raspberry_pi/server.ini` to change the listener, video
      source, or logging settings, then restart the service:
       ```bash
       sudo systemctl restart psp-rpi-car.service
       ```
-      Check service status with `sudo systemctl status psp-rpi-car.service`.
+      Service status can be checked with:
+      ```bash
+      sudo systemctl status psp-rpi-car.service
+      ```
       When file logging is enabled, logs are written to
-      `raspberry_pi/logs/server.log`; otherwise use
+      `raspberry_pi/logs/server.log`, otherwise use
       `sudo journalctl -u psp-rpi-car.service`.
 
 3. Prepare the PSP Client:
@@ -137,13 +151,11 @@ file, so the service can be started from any working directory.
 
 - Set `[logging] enabled = false` to disable application logging. Otherwise,
   `level` controls the verbosity and `file` selects an optional log file
-  (leave it empty to log only to the console/system journal).
-- Set `[video] source` to an FFmpeg-readable file, device, or stream URL. Video
-  can be turned off with `[video] enabled = false`.
+  (leave it empty to log only to the console/system).
 - The TCP listener remains active after a client disconnects and accepts a
-  subsequent PSP connection. Controller command routing is isolated in
-  `handle_input_command()` so it can later be connected to the Freenove
-  motor-control modules independently of the network transport.
+  subsequent PSP connection. `handle_input_command()` receives a typed
+  `PSPInput` and its `controls` property provides normalized directions for
+  connecting the server to `freenove/Server/mDev.py`.
 
 ## License
 

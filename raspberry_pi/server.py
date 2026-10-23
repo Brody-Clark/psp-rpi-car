@@ -13,6 +13,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+if __package__:
+    from .psp_input import PSPInput, VehicleControls
+else:
+    from psp_input import PSPInput, VehicleControls
+
 
 @dataclass(frozen=True)
 class ServerConfig:
@@ -119,15 +124,22 @@ def configure_logging(config: ServerConfig) -> logging.Logger:
     return logger
 
 
-def handle_input_command(buttons: int, analog_x: int, analog_y: int,
-                         logger: logging.Logger) -> None:
-    """Route one decoded PSP command; replace this seam with car controls."""
+def handle_input_command(
+    command: PSPInput, logger: logging.Logger
+) -> VehicleControls:
+    """Map a PSP sample for the vehicle-controller."""
+    controls = command.controls
     logger.debug(
-        "Input buttons=0x%x analog_x=%d analog_y=%d",
-        buttons,
-        analog_x,
-        analog_y,
+        "Controls camera_horizontal=%s camera_vertical=%s steering=%s "
+        "throttle=%s (analog_x=%d analog_y=%d)",
+        controls.camera_horizontal.name.lower(),
+        controls.camera_vertical.name.lower(),
+        controls.steering.name.lower(),
+        controls.throttle.name.lower(),
+        command.analog_x,
+        command.analog_y,
     )
+    return controls
 
 
 def receive_inputs(conn: socket.socket, stop_event: threading.Event,
@@ -143,11 +155,9 @@ def receive_inputs(conn: socket.socket, stop_event: threading.Event,
 
             pending_data.extend(data)
             while len(pending_data) >= 6:
-                buttons, analog_x, analog_y = struct.unpack_from(
-                    "<IBB", pending_data
-                )
+                command = PSPInput.from_packet(bytes(pending_data[:6]))
                 del pending_data[:6]
-                handle_input_command(buttons, analog_x, analog_y, logger)
+                handle_input_command(command, logger)
     except OSError as error:
         if not stop_event.is_set():
             logger.warning("Controller input connection failed: %s", error)
@@ -248,7 +258,7 @@ def stream_video(conn: socket.socket, stop_event: threading.Event,
 
 def handle_client(conn: socket.socket, address: tuple, config: ServerConfig,
                   logger: logging.Logger) -> None:
-    """Run input and optional video workers for one connection."""
+    """Run input and video threads for connection."""
     logger.info("PSP connected from %s:%d", *address)
     stop_event = threading.Event()
     input_thread = threading.Thread(
@@ -278,7 +288,7 @@ def handle_client(conn: socket.socket, address: tuple, config: ServerConfig,
         logger.info("Connection from %s:%d closed", *address)
 
 
-def serve_forever(config: ServerConfig, logger: logging.Logger) -> None:
+def run_server(config: ServerConfig, logger: logging.Logger) -> None:
     """Keep listening and accept another PSP after every disconnect."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -309,7 +319,7 @@ def main() -> None:
     config = load_config(args.config.resolve())
     logger = configure_logging(config)
     try:
-        serve_forever(config, logger)
+        run_server(config, logger)
     except KeyboardInterrupt:
         logger.info("Server stopped")
 

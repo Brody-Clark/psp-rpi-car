@@ -11,7 +11,7 @@ SERVER_GROUP="$(id -gn "$SERVER_USER")"
 
 echo "[1/5] Installing dependencies..."
 sudo apt-get update
-sudo apt-get install -y hostapd dnsmasq python3 ffmpeg
+sudo apt-get install -y hostapd dnsmasq python3 ffmpeg python3-opencv
 
 echo "[2/5] Configuring static IP..."
 sudo bash -c "cat >/etc/dhcpcd.conf" <<EOF
