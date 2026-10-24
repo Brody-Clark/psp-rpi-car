@@ -66,13 +66,19 @@ int app_run(void)
 
 	platform_log("Connect to the Raspberry Pi access point.\n");
 	platform_wait_s(2);
-	if (!network_connect_access_point())
 	{
-		platform_log("Could not connect to the access point.\n");
-		result = -1;
-		goto cleanup;
+		bool access_point_connected = network_connect_access_point();
+
+		display_shutdown();
+		display_ready = false;
+		platform_reset_console();
+		if (!access_point_connected)
+		{
+			platform_log("Could not connect to the access point.\n");
+			result = -1;
+			goto cleanup;
+		}
 	}
-	platform_clear_console();
 	if (!network_connect_server(PSP_SERVER_CONNECT_TIMEOUT_SECONDS))
 	{
 		result = -1;
@@ -84,9 +90,7 @@ int app_run(void)
 		result = -1;
 		goto cleanup;
 	}
-	sceKernelDelayThread(10000);
-	display_end_utility_frame();
-	platform_clear_console();
+
 	platform_log("Connected. Press HOME to exit.\n");
 
 	while (platform_is_running())
@@ -140,6 +144,7 @@ int app_run(void)
 	}
 
 cleanup:
+	platform_wait_s(3);
 	if (network_ready)
 	{
 		network_shutdown();

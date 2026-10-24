@@ -1,120 +1,189 @@
-# PSP Rasberry Pi Car
+# PSP-Raspberry Pi Car
 
-PSP Raspberry Pi Car (psp-rpi-car) lets you remotely connect a Sony PSP to a Raspberry Pi host to stream camera/sensor data and forward button inputs. This project demonstrates the ability to control a Raspberry Pi car using the PSP as the controller and camera monitor.
+psp-rpi-car (PSP-Raspberry Pi Car) demonstrates the usage of a Sony PSP, along with the pspsdk libraries, to control a Raspberry Pi car and display its streamed camera data.
 
-## Table of Contents
+## Contents
 
 - [Overview](#overview)
-- [Features](#features)
+- [Project Structure](#project-structure)
 - [Requirements](#requirements)
-- [Getting started](#getting-started)
-- [Building from source](#building-from-source)
+- [Getting Started](#getting-started)
 - [Usage](#usage)
+- [Raspberry Pi Server Configuration](#raspberry-pi-server-configuration)
+- [Building from Source](#building-from-source)
 - [Troubleshooting](#troubleshooting)
+- [Development](CONTRIBUTING.md)
 - [License](#license)
-- [About / Contact](#about--contact)
 
 ## Overview
 
-This project provides a small PSP application (EBOOT.PBP) and a Raspberry Pi server that together demonstrate two-way data transfer: PSP button inputs can be sent to the Pi, and the Pi can stream camera and sensor data back to the PSP. This project uses the Rapsberry Pi server as a driver for a Freenove three-wheeled car but can be repurposed for other uses such as drones, IoT devices, and other robotics experiments.
-
+This project provides a small PSP application (EBOOT.PBP) and a Raspberry Pi server that together demonstrate two-way data transfer: PSP button inputs can be sent to the Pi, and the Pi can stream camera and sensor data back to the PSP. This project uses the Rapsberry Pi server as a driver for a Freenove three-wheeled car but can be repurposed for other uses such as drones, IoT devices, and other robotics projects.
 
 ## Project Structure
 
 ```text
-psp-pi-car/
-├── README.md                
-├── CONTRIBUTING.md           # Guidelines for contributing developers
-├── scripts/                  # Automation and setup scripts
-│   └── setup_server.sh       # Automates AP mode, dependencies, and service config
-├── docs/                     # Schematics, pinouts, and network protocols
-│   └── protocol.md
-├── psp/                      # PSP client source code & CMake build
-│   ├── CMakeLists.txt
-│   ├── include/               # Public module interfaces
-│   └── src/                   # Application and PSP platform modules
-└── raspberry_pi/             # Raspberry Pi Server source code
-    ├── server.py             # Main network listener & command router
-    ├── psp_input.py          # Typed PSP input parsing and control mapping
-    ├── server.ini            # Listener, video, and logging configuration
-    ├── camera/               # Video streaming module
-    ├── motors/               # Freenove motor abstraction layer
-    └── freenove/
-        ├── Readme.md         # Freenove attribution and license information
-        └── Server/mDev.py    # Freenove shield I2C control module
+psp-rpi-car/
+├── docs/
+├── pi/
+│   ├── freenove/
+│   ├── scripts/
+│   ├── tests/
+│   ├── tools/
+│   ├── psp_input.py
+│   ├── robot_controller.py
+│   ├── robot_state.py
+│   ├── server.ini
+│   └── server.py
+├── psp/
+│   ├── include/
+│   ├── src/
+│   └── tests/
+├── CONTRIBUTING.md
+└── README.md
 ```
 
-The PSP client starts the application via `psp/src/app.c`. Controller input,
-network transport, JPEG decoding, display output, and PSP lifecycle services
-are implemented in separate modules with public interfaces in `psp/include/`.
-The network module sends controller updates and receives video on separate
-worker threads and received threads are decoded and dipslayed by the video module. 
+### PSP Client
 
-The Raspberry Pi server parses each six-byte controller packet into a
-`PSPInput` dataclass and maps its buttons to normalized `VehicleControls`:
-D-pad directions control camera horizontal/vertical movement, L/R control
-vehicle steering, and Triangle/X control forward/reverse throttle. The original
-Freenove GUI, TCP server, client, and startup files are not part of this server but
-`freenove/Server/mDev.py` is retained as the shield-control module for a custom
-entry point.
+The PSP client reads controller input, sends six-byte control packets, receives
+JPEG frames, and presents the camera image. Its modules separate input,
+networking, video decoding, display, and PSP lifecycle responsibilities.
+
+The client is built with PSPSDK libraries. It uses PSP GU for utility-dialog
+rendering, PSP networking libraries for the connection, and PSP JPEG/MPEG
+libraries for video decoding.
+
+### Pi Server
+
+The Pi server accepts the PSP connection, interprets its control packets, and
+routes movement to the Freenove shield driver. It also captures camera frames
+and streams them to the client as JPEG images. The server remains available
+for a client reconnect.
+
+The server uses Python's standard library for configuration, networking, and
+logging. OpenCV handles USB camera capture and JPEG encoding. The retained
+Freenove driver provides the shield interface.
+
+### Client and Server Relationship
+
+The PSP and Pi communicate over TCP. The PSP sends controller packets and the
+Pi returns length-prefixed JPEG frames. The [protocol description](docs/protocol.md)
+documents the packet formats.
 
 ## Requirements
 
-- Raspberry Pi (tested on Pi 3 / Pi 4) with Raspbian / Raspberry Pi OS
-- Freenove three-wheeled car kit (Can be purchased from the official Freenove store [here](https://store.freenove.com/products/fnk0021?srsltid=AU7gw4WxGUVLTF7dpSA2eTFnrtBII-kZL_LF3ODinYbY7OUMYRSHbQqb))
-- A Sony PSP capable of running homebrew (custom firmware / ability to run unsigned EBOOT.PBP)
-- A USB connection to transfer `EBOOT.PBP` to the PSP (or memory stick access)
-- (Optional) Ethernet or additional wifi-adapter to SSH into your pi when setup script disables onboard Wi-Fi
-- pspsdk toolchain (only needed if building from source)
+- A Raspberry Pi running Raspberry Pi OS (tested on Pi 3/Pi 4)
+- The Freenove three-wheeled car kit and shield (Can be purchased from the official Freenove store [here](https://store.freenove.com/products/fnk0021?srsltid=AU7gw4WxGUVLTF7dpSA2eTFnrtBII-kZL_LF3ODinYbY7OUMYRSHbQqb))
+- A USB camera supported by OpenCV (Should be included in Freenove kit)
+- A Sony PSP capable of running homebrew or usigned EBOOT.PBP files
+- A way to transfer files to the PSP memory stick
+- Ethernet or a second Wi-Fi adapter if you need remote access while the Pi's
+  built-in Wi-Fi is configured as an access point
+  - pspsdk toolchain (only needed if building from source)
 
 ## Getting Started
 
-To get started, follow these steps:
+### Set Up the Raspberry Pi
 
-1. Clone the repo:
-    ```bash
-    git clone https://github.com/Brody-Clark/psp-rpi-car.git
-    cd psp-rpi-car
-    ```
+Download `pi-car-server.zip` from GitHub Releases and extract it on the Pi.
+Alternatively, clone the repository:
 
-2. Prepare the Raspberry Pi:
-   - Inspect `raspberry_pi/scripts/setup_server.sh` for the SSID and password defaults.
-        > [!NOTE]
-        > keep note of the default SSID and password or change them as you wish. These will be needed later to connect to the Pi from your PSP.
-   -  Setup the Pi as an access point host:
-        ```bash
-            sudo bash ./raspberry_pi/scripts/setup_server.sh
-        ```
-      > [!IMPORTANT]
-      > This script will disable the Pi's regular Wi-Fi connectivity. This will prevent SSH communication. If you need an SSH connection you can:
-      > 1. Use an ethernet connection
-      > 2. Use an additional wifi adapter on the Pi
+```bash
+git clone https://github.com/Brody-Clark/psp-rpi-car.git
+cd psp-rpi-car
+```
 
-   - The setup script installs and starts the `psp-rpi-car.service` systemd
-     service. You can edit `raspberry_pi/server.ini` to change the listener, video
-     source, or logging settings, then restart the service:
-      ```bash
-      sudo systemctl restart psp-rpi-car.service
-      ```
-      Service status can be checked with:
-      ```bash
-      sudo systemctl status psp-rpi-car.service
-      ```
-      When file logging is enabled, logs are written to
-      `raspberry_pi/logs/server.log`, otherwise use
-      `sudo journalctl -u psp-rpi-car.service`.
+Inspect `pi/scripts/setup_server.sh` for the SSID and password defaults.
+> [!IMPORTANT]
+> keep note of the default SSID and password or change them if you want. These will be needed later to connect to the Pi from your PSP.
 
-3. Prepare the PSP Client:
-   - Download the latest release (EBOOT.PBP) from Releases. If building from source, follow [Building from source](#building-from-source).
-   - Connect PSP to your PC via USB or access the memory stick.
-   - Copy `EBOOT.PBP` to `PSP/GAME/PSP_RPI_LINK/EBOOT.PBP` (create the folder if needed).
+Run the setup script from the extracted release folder:
 
-4. Connect and run:
-   - On PSP: `Settings > Network Settings > Infrastructure Mode > [New Connection] > Scan`, then connect to the Pi's SSID.
-   - On PSP: select `Game > Memory Stick > PSP_RPI_LINK` to start the app.
+```bash
+sudo bash ./pi-car-server/scripts/setup_server.sh
+```
 
-6. From you PSP, navigate to `Game > Memory Stick` and select the app called `PSP_RPI_LINK`
+For a repository checkout, use:
 
+```bash
+sudo bash ./pi/scripts/setup_server.sh
+```
+
+> [!WARNING]
+> This script will disable the Pi's regular Wi-Fi connectivity. This will prevent SSH communication. If you need an SSH connection you can:
+> 1. Use an ethernet connection
+> 2. Connect an additional USB wifi adapter to the Pi
+
+### Install the PSP Client
+
+Download `psp-car-client.zip` from GitHub Releases and extract it. Copy the
+included `PSP_RPI_CAR/` folder to the PSP memory stick under `PSP/GAME/`.
+Confirm the final file path is `PSP/GAME/PSP_RPI_CAR/EBOOT.PBP`.
+
+### Connect
+
+On the PSP, open **Settings > Network Settings > Infrastructure Mode** and
+connect to the Pi access point. Then launch **PSP_RPI_CAR** from
+**Game > Memory Stick**.
+
+## Usage
+
+### PSP Controls
+
+| PSP input | Action |
+| --- | --- |
+| D-pad Up / Down | Tilt the camera up or down |
+| D-pad Left / Right | Pan the camera left or right |
+| L / R shoulder | Turn the vehicle left or right |
+| Triangle (hold) | Drive forward at the configured speed |
+| X (hold) | Drive in reverse at the configured speed |
+| Release Triangle / X | Stop the motors and retain the configured speed |
+| Circle | Stop the motors |
+| HOME | Exit the application |
+
+## Raspberry Pi Server Configuration
+
+The server reads `server.ini` from its installation directory. In a repository
+checkout, edit `pi/server.ini`. In the release archive, edit
+`pi-car-server/server.ini`.
+
+After changing a setting, restart the service:
+
+```bash
+sudo systemctl restart psp-rpi-car.service
+```
+
+| Section | Option | Default | Description |
+| --- | --- | --- | --- |
+| `[server]` | `host` | `0.0.0.0` | Network address for incoming clients |
+| `[server]` | `port` | `12345` | TCP port used by the PSP and server |
+| `[server]` | `backlog` | `1` | Number of pending TCP connections |
+| `[video]` | `enabled` | `true` | Enable camera capture and video streaming |
+| `[video]` | `device` | `0` | USB camera index or device path such as `/dev/video0` |
+| `[video]` | `width` | `480` | Requested camera image width in pixels |
+| `[video]` | `height` | `272` | Requested camera image height in pixels |
+| `[video]` | `fps` | `15` | Requested camera frame rate |
+| `[controls]` | `drive_speed` | `5` | Speed level from 1 to 10, mapped internally to 35–100 |
+| `[controls]` | `steering_step` | `5` | Steering angle change per repeat |
+| `[controls]` | `camera_pan_step` | `5` | Camera pan change per repeat |
+| `[controls]` | `camera_tilt_step` | `5` | Camera tilt change per repeat |
+| `[controls]` | `held_control_repeat_ms` | `100` | Repeat interval for held directional controls |
+| `[controls]` | `acceleration_duration_ms` | `300` | Duration of the controller acceleration ramp |
+| `[logging]` | `enabled` | `true` | Set to `false` to disable application logs |
+| `[logging]` | `level` | `INFO` | Log detail level such as `DEBUG`, `INFO`, or `WARNING` |
+| `[logging]` | `file` | `logs/server.log` | Optional log file path, relative to the INI file |
+
+Set the logging file option to an empty value to log to the service journal
+only. View service status with:
+
+```bash
+sudo systemctl status psp-rpi-car.service
+```
+
+When file logging is disabled or unavailable, view logs with:
+
+```bash
+sudo journalctl -u psp-rpi-car.service
+```
 
 ## Building from Source
 
@@ -124,39 +193,46 @@ To build the PSP client from source you will need the pspsdk toolchain:
 - pspdev repo: https://github.com/pspdev/pspdev
 - pspsdk repo: https://github.com/pspdev/pspsdk
 
-Build this project with the PSPSDK `psp-cmake` wrapper:
+Build the psp client project with the PSPSDK `psp-cmake` wrapper:
 ```bash
-mkdir build
-cd build
+cd psp/
+mkdir -p build
+cd build/
 psp-cmake ..
 make
 ```
 
+This will produce the EBOOT.PBP that needs to be added to the `PSP/GAME/PSP_RPI_CAR/` folder.
+
 ## Troubleshooting
 
-- "I lost SSH after setup": The Access Point setup disables the Pi's wifi client mode. Use ethernet, a secondary wi-fi adapter, or re-enable Wi-Fi manually after setup.
-- PSP won't connect: Verify the SSID and password printed by the Pi, confirm PSP firmware supports homebrew / EBOOT loading. If you successfully setup the server on the Pi previously but Access Point connection fails, you may need to restart the `hostapd` and `dnsmasq` services:
+### PSP Cannot Connect
+
+Check that the Pi access point and server service are running. Confirm the
+configured SSID and password and verify the client and server use the same TCP
+port.
+
+If the access point stops working after setup, restart its services:
+
 ```bash
-sudo systemctl stop hostapd dnsmasq
-sudo systemctl start hostapd dnsmasq
+sudo systemctl restart hostapd dnsmasq
 ```
-- Build errors: Ensure pspsdk is installed and in PATH and you are compiling within WSL if on Windows.
 
-## Raspberry Pi Server Configuration
+### Remote Access to the Pi Is Unavailable
 
-The server reads `raspberry_pi/server.ini` by default. You can also run it
-directly with `python3 raspberry_pi/server.py --config /path/to/server.ini`.
-Relative video-source and log-file paths are resolved relative to the config
-file, so the service can be started from any working directory.
+The setup script configures the Pi's built-in Wi-Fi for access-point use. Use
+Ethernet or a second Wi-Fi adapter to keep remote access.
 
-- Set `[logging] enabled = false` to disable application logging. Otherwise,
-  `level` controls the verbosity and `file` selects an optional log file
-  (leave it empty to log only to the console/system).
-- The TCP listener remains active after a client disconnects and accepts a
-  subsequent PSP connection. `handle_input_command()` receives a typed
-  `PSPInput` and its `controls` property provides normalized directions for
-  connecting the server to `freenove/Server/mDev.py`.
+### Camera or Video Problems
+
+Check that the USB camera is connected and available at the configured device.
+Review the service logs for OpenCV camera errors and confirm the requested
+resolution is supported by the camera.
+
+## Development
+
+For development setup, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-This project is licensed under the MIT License. See the included [LICENSE](LICENSE) file for full details.
+This project is licensed under the MIT License. See [LICENSE](LICENSE).

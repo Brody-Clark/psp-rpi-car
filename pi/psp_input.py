@@ -16,6 +16,7 @@ class PSPButton(IntFlag):
     L = 0x00000100
     R = 0x00000200
     TRIANGLE = 0x00001000
+    CIRCLE = 0x00002000
     X = 0x00004000
 
 
@@ -29,7 +30,7 @@ class ControlDirection(IntEnum):
 
 @dataclass(frozen=True)
 class VehicleControls:
-    """Normalized controls; positive means right, up, right, and forward."""
+    """Normalized controls with positive meaning right, up, right, and forward."""
 
     camera_horizontal: ControlDirection
     camera_vertical: ControlDirection

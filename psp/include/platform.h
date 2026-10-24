@@ -23,6 +23,9 @@ void platform_shutdown(void);
 /** Clear the PSP debug text console. */
 void platform_clear_console(void);
 
+/** Reinitialize the PSP debug text console after another display mode was used. */
+void platform_reset_console(void);
+
 /** Write a formatted message to the PSP debug text console. */
 void platform_log(const char *format, ...);
 

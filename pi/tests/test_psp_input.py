@@ -1,7 +1,7 @@
 import struct
 import unittest
 
-from psp_input import (
+from pi.psp_input import (
     ControlDirection,
     PSPButton,
     PSPInput,

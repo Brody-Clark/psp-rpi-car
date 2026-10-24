@@ -123,6 +123,12 @@ void platform_clear_console(void)
 	pspDebugScreenClear();
 }
 
+void platform_reset_console(void)
+{
+	pspDebugScreenInit();
+	platform_clear_console();
+}
+
 void platform_log(const char *format, ...)
 {
 	char message[512];

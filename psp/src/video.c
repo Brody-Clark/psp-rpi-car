@@ -12,6 +12,7 @@
 
 static bool jpeg_decoder_initialized;
 static bool jpeg_instance_created;
+static bool decode_error_logged;
 
 bool video_initialize(void)
 {
@@ -76,16 +77,34 @@ bool video_decode_jpeg(const uint8_t *jpeg_data, size_t jpeg_size,
 		jpeg_size == 0 || jpeg_size > INT_MAX ||
 		output_capacity < required_pixels)
 	{
+		if (!decode_error_logged)
+		{
+			platform_log(
+				"Invalid JPEG decode arguments (size=%lu, capacity=%lu).\n",
+				(unsigned long)jpeg_size, (unsigned long)output_capacity);
+			decode_error_logged = true;
+		}
 		return false;
 	}
-
 	result = sceJpegDecodeMJpeg((u8 *)jpeg_data, (SceSize)jpeg_size,
 								(u8 *)output, 0);
 	if (result < 0)
 	{
-		platform_log("JPEG decode failed (%d).\n", result);
+		if (!decode_error_logged)
+		{
+			platform_log(
+				"JPEG decode failed (%d), size=%lu, header=%02x %02x %02x "
+				"%02x.\n",
+				result, (unsigned long)jpeg_size,
+				(unsigned int)jpeg_data[0],
+				(unsigned int)(jpeg_size > 1 ? jpeg_data[1] : 0),
+				(unsigned int)(jpeg_size > 2 ? jpeg_data[2] : 0),
+				(unsigned int)(jpeg_size > 3 ? jpeg_data[3] : 0));
+			decode_error_logged = true;
+		}
 		return false;
 	}
 
+	decode_error_logged = false;
 	return true;
 }
