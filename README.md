@@ -1,6 +1,6 @@
-# PSP-Raspberry Pi Car
+# PSP Raspberry Pi Car
 
-psp-rpi-car (PSP-Raspberry Pi Car) demonstrates the usage of a Sony PSP, along with the pspsdk libraries, to control a Raspberry Pi car and display its streamed camera data.
+psp-rpi-car (PSP Raspberry Pi Car) demonstrates the usage of a Sony PSP, along with the pspsdk libraries, to control a Raspberry Pi car and display its streamed camera data.
 
 ## Contents
 
