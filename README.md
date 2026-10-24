@@ -136,7 +136,6 @@ connect to the Pi access point. Then launch **PSP_RPI_CAR** from
 | L / R shoulder | Turn the vehicle left or right |
 | Triangle (hold) | Drive forward at the configured speed |
 | X (hold) | Drive in reverse at the configured speed |
-| Release Triangle / X | Stop the motors and retain the configured speed |
 | Circle | Stop the motors |
 | HOME | Exit the application |
 
@@ -151,6 +150,7 @@ After changing a setting, restart the service:
 ```bash
 sudo systemctl restart psp-rpi-car.service
 ```
+The config supports the following options:
 
 | Section | Option | Default | Description |
 | --- | --- | --- | --- |
@@ -162,7 +162,7 @@ sudo systemctl restart psp-rpi-car.service
 | `[video]` | `width` | `480` | Requested camera image width in pixels |
 | `[video]` | `height` | `272` | Requested camera image height in pixels |
 | `[video]` | `fps` | `15` | Requested camera frame rate |
-| `[controls]` | `drive_speed` | `5` | Speed level from 1 to 10, mapped internally to 35–100 |
+| `[controls]` | `drive_speed` | `5` | Speed level from 1 to 10 |
 | `[controls]` | `steering_step` | `5` | Steering angle change per repeat |
 | `[controls]` | `camera_pan_step` | `5` | Camera pan change per repeat |
 | `[controls]` | `camera_tilt_step` | `5` | Camera tilt change per repeat |
