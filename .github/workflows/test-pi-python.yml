@@ -1,0 +1,38 @@
+name: Test Pi Python
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "pi/**"
+      - ".github/workflows/test-pi-python.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "pi/**"
+      - ".github/workflows/test-pi-python.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    name: Python ${{ matrix.python-version }} unit tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run unit tests
+        run: python -m unittest discover -s pi/tests -v

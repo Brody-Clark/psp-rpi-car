@@ -2,7 +2,7 @@
 
 ## Repository Setup
 
-Clone the repository and work from its root directory:
+Clone the repository:
 
 ```bash
 git clone https://github.com/Brody-Clark/psp-rpi-car.git
@@ -15,22 +15,23 @@ The main code areas are:
 - `psp/tests/` contains host-buildable tests for the PSP wire protocol.
 - `pi/` contains the Raspberry Pi server, configuration, and controller.
 - `pi/tests/` contains Pi server and input tests.
-- `pi/tools/` contains developer tools, including the keyboard client.
+- `pi/tools/` contains developer tools, including the keyboard teleop client.
 
 ## Building the PSP Client
 
 Install PSPSDK by following the
 [PSPSDK installation instructions](https://pspdev.github.io/). Build the PSP
-application from the repository root:
+application:
 
 ```bash
-mkdir -p build/psp
-cd build/psp
-psp-cmake ../../psp
+cd psp/
+mkdir build
+cd build/
+psp-cmake ..
 make
 ```
 
-The build creates `EBOOT.PBP` in the PSP build output. The PSP Release archive
+The build creates `EBOOT.PBP` in the `psp/build/` folder. The PSP Release archive
 should include a top-level `PSP_RPI_CAR/` folder containing that file. The
 folder can then be copied into `PSP/GAME/` on the memory stick.
 
@@ -43,10 +44,6 @@ repository root:
 python3 -m unittest discover -s pi/tests -v
 ```
 
-These tests cover packet parsing, server control behavior, camera stream
-framing, and keyboard mapping. Hardware is mocked where needed, so a Raspberry
-Pi, shield, and camera are not required to run the suite.
-
 ## Running the PSP Protocol Test
 
 The protocol test uses the host C compiler and does not require PSPSDK:
@@ -56,6 +53,13 @@ cmake -S psp/tests -B build/psp-tests
 cmake --build build/psp-tests
 ctest --test-dir build/psp-tests --output-on-failure
 ```
+
+## Continuous Integration
+
+GitHub Actions runs the Python unit tests on pushes and pull requests that
+change Pi files. The PSP host protocol test runs when its protocol header,
+test files, or workflow changes. Both workflows can also be started manually
+from the Actions tab.
 
 ## Using the Keyboard Mock Client
 
