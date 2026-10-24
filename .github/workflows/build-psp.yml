@@ -1,0 +1,40 @@
+name: Build PSP Client
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'psp/**'
+      - '.github/workflows/build-psp.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'psp/**'
+      - '.github/workflows/build-psp.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # Uses the official pre-built PSPdev toolchain container environment
+    container: ghcr.io/pspdev/pspdev:latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Compile PSP Client
+        run: |
+          export PSPDEV=/usr/local/pspdev
+          export PATH=$PATH:$PSPDEV/bin
+          
+          # Navigate to your PSP source directory and build
+          cd psp
+          make clean
+          make
+
+      - name: Upload EBOOT Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: psp-eboot
+          path: psp/EBOOT.PBP
+          retention-days: 4
