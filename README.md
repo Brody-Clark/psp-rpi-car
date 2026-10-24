@@ -78,7 +78,7 @@ documents the packet formats.
 - A way to transfer files to the PSP memory stick
 - Ethernet or a second Wi-Fi adapter if you need remote access while the Pi's
   built-in Wi-Fi is configured as an access point
-  - pspsdk toolchain (only needed if building from source)
+- pspsdk toolchain (only needed if building from source)
 
 ## Getting Started
 
@@ -170,7 +170,7 @@ The config supports the following options:
 | `[controls]` | `acceleration_duration_ms` | `300` | Duration of the controller acceleration ramp |
 | `[logging]` | `enabled` | `true` | Set to `false` to disable application logs |
 | `[logging]` | `level` | `INFO` | Log detail level such as `DEBUG`, `INFO`, or `WARNING` |
-| `[logging]` | `file` | `logs/server.log` | Optional log file path, relative to the INI file |
+| `[logging]` | `file` | ` ` | Optional log file path, relative to the INI file |
 
 Set the logging file option to an empty value to log to the service journal
 only. View service status with:
@@ -182,7 +182,7 @@ sudo systemctl status psp-rpi-car.service
 When file logging is disabled or unavailable, view logs with:
 
 ```bash
-sudo journalctl -u psp-rpi-car.service
+sudo journalctl -u psp-rpi-car.service -f
 ```
 
 ## Building from Source
