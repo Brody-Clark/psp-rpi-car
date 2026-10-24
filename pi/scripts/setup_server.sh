@@ -5,10 +5,13 @@ SSID="PSP_NET_BRIDGE"
 PASSPHRASE="password123"
 WLAN_IFACE="wlan0"
 STATIC_IP="192.168.2.1"
+SERVER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SERVER_USER="${SUDO_USER:-pi}"
+SERVER_GROUP="$(id -gn "$SERVER_USER")"
 
 echo "[1/5] Installing dependencies..."
 sudo apt-get update
-sudo apt-get install -y hostapd dnsmasq python3
+sudo apt-get install -y hostapd dnsmasq i2c-tools python3 python3-smbus python3-opencv
 
 echo "[2/5] Configuring static IP..."
 sudo bash -c "cat >/etc/dhcpcd.conf" <<EOF
@@ -48,9 +51,30 @@ sudo systemctl unmask hostapd
 sudo systemctl enable hostapd dnsmasq
 sudo systemctl start hostapd dnsmasq
 
-echo "[*] Launching PSP server..."
-nohup python3 /home/pi/psppi/server.py > /var/log/psppi.log 2>&1 &
+echo "[*] Installing PSP server service..."
+sudo install -d -o "$SERVER_USER" -g "$SERVER_GROUP" "$SERVER_DIR/logs"
+sudo tee /etc/systemd/system/psp-rpi-car.service >/dev/null <<EOF
+[Unit]
+Description=PSP Raspberry Pi Car Server
+Wants=hostapd.service dnsmasq.service
+After=network.target hostapd.service dnsmasq.service
+
+[Service]
+Type=simple
+User=$SERVER_USER
+WorkingDirectory=$SERVER_DIR
+ExecStart=/usr/bin/python3 $SERVER_DIR/server.py --config $SERVER_DIR/server.ini
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl daemon-reload
+sudo systemctl enable --now psp-rpi-car.service
 
 echo "Setup complete"
 echo "Host SSID: '$SSID'"
 echo "Host password: '$PASSPHRASE'"
+echo "Server config: $SERVER_DIR/server.ini"
+echo "Restart server: sudo systemctl restart psp-rpi-car.service"
