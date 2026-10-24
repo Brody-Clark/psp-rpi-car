@@ -26,7 +26,6 @@ jobs:
           export PSPDEV=/usr/local/pspdev
           export PATH=$PATH:$PSPDEV/bin
           
-          cd psp-rpi-car
           cd psp
           psp-cmake 
           make
