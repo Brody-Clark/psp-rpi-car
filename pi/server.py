@@ -115,7 +115,7 @@ def load_config(config_path: Path) -> ServerConfig:
         camera_pan_step=camera_pan_step,
         camera_tilt_step=camera_tilt_step,
         held_control_repeat_ms=held_control_repeat_ms,
-        drive_speed=round(35 + (drive_speed_level - 1) * 65 / 9),
+        drive_speed=round(35 + (drive_speed_level - 1) * 65 / 9),  # map 1-10 to 35-100
         acceleration_duration_ms=acceleration_duration_ms,
         logging_enabled=logging_enabled,
         logging_level=logging_level,
@@ -156,9 +156,7 @@ def handle_input_command(
     controller: RobotController,
     config: ServerConfig,
     logger: logging.Logger,
-    held_control_timers: Optional[
-        dict[str, tuple[ControlDirection, float]]
-    ] = None,
+    held_control_timers: Optional[dict[str, tuple[ControlDirection, float]]] = None,
     current_time: Optional[float] = None,
 ) -> PSPButton:
     """Apply button state and repeat camera/steering steps while controls are held."""
@@ -256,9 +254,13 @@ def _drive_direction(buttons: PSPButton) -> Optional[bool]:
     return triangle_pressed
 
 
-def receive_inputs(conn: socket.socket, stop_event: threading.Event,
-                   controller: RobotController, config: ServerConfig,
-                   logger: logging.Logger) -> None:
+def receive_inputs(
+    conn: socket.socket,
+    stop_event: threading.Event,
+    controller: RobotController,
+    config: ServerConfig,
+    logger: logging.Logger,
+) -> None:
     """Receive six-byte PSP commands until the client disconnects."""
     pending_data = bytearray()
     previous_buttons = PSPButton.NONE
@@ -315,15 +317,19 @@ def _open_video_capture(device: int | str, width: int, height: int, fps: float):
         capture.release()
         raise RuntimeError(f"Could not open camera device {device!r}")
 
-    capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('Y', 'U', 'Y', 'V'))
+    capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc("Y", "U", "Y", "V"))
     capture.set(cv2.CAP_PROP_FRAME_WIDTH, width)
     capture.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
     capture.set(cv2.CAP_PROP_FPS, fps)
     return cv2, capture
 
 
-def _send_video_frames(conn: socket.socket, stop_event: threading.Event,
-                       config: ServerConfig, logger: logging.Logger) -> None:
+def _send_video_frames(
+    conn: socket.socket,
+    stop_event: threading.Event,
+    config: ServerConfig,
+    logger: logging.Logger,
+) -> None:
     """Capture USB camera frames with OpenCV and stream length-prefixed JPEGs."""
     capture = None
     try:
@@ -344,8 +350,11 @@ def _send_video_frames(conn: socket.socket, stop_event: threading.Event,
                 stop_event.wait(0.05)
                 continue
             read_error_logged = False
-            frame = cv2.resize(frame, (config.video_width, config.video_height), 
-                                   interpolation=cv2.INTER_AREA)
+            frame = cv2.resize(
+                frame,
+                (config.video_width, config.video_height),
+                interpolation=cv2.INTER_AREA,
+            )
             encoded_ok, encoded_frame = cv2.imencode(
                 ".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80]
             )
@@ -369,8 +378,12 @@ def _send_video_frames(conn: socket.socket, stop_event: threading.Event,
         logger.debug("Video worker ended")
 
 
-def stream_video(conn: socket.socket, stop_event: threading.Event,
-                 config: ServerConfig, logger: logging.Logger) -> None:
+def stream_video(
+    conn: socket.socket,
+    stop_event: threading.Event,
+    config: ServerConfig,
+    logger: logging.Logger,
+) -> None:
     """Run the optional video transport for the active PSP connection."""
     if not config.video_enabled:
         logger.info("Video streaming is disabled by configuration")
@@ -378,8 +391,13 @@ def stream_video(conn: socket.socket, stop_event: threading.Event,
     _send_video_frames(conn, stop_event, config, logger)
 
 
-def handle_client(conn: socket.socket, address: tuple, controller: RobotController, config: ServerConfig,
-                  logger: logging.Logger) -> None:
+def handle_client(
+    conn: socket.socket,
+    address: tuple,
+    controller: RobotController,
+    config: ServerConfig,
+    logger: logging.Logger,
+) -> None:
     """Run input and video threads for connection."""
     logger.info("PSP connected from %s:%d", *address)
     stop_event = threading.Event()
@@ -410,7 +428,9 @@ def handle_client(conn: socket.socket, address: tuple, controller: RobotControll
         logger.info("Connection from %s:%d closed", *address)
 
 
-def run_server(controller: RobotController, config: ServerConfig, logger: logging.Logger) -> None:
+def run_server(
+    controller: RobotController, config: ServerConfig, logger: logging.Logger
+) -> None:
     """Keep listening and accept another PSP after every disconnect."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

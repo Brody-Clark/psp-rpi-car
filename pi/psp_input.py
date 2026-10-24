@@ -59,16 +59,10 @@ class PSPInput:
     def controls(self) -> VehicleControls:
         """Map PSP buttons to camera, vehicle heading, and throttle controls."""
         return VehicleControls(
-            camera_horizontal=_direction(
-                self.buttons, PSPButton.RIGHT, PSPButton.LEFT
-            ),
-            camera_vertical=_direction(
-                self.buttons, PSPButton.UP, PSPButton.DOWN
-            ),
+            camera_horizontal=_direction(self.buttons, PSPButton.RIGHT, PSPButton.LEFT),
+            camera_vertical=_direction(self.buttons, PSPButton.UP, PSPButton.DOWN),
             steering=_direction(self.buttons, PSPButton.R, PSPButton.L),
-            throttle=_direction(
-                self.buttons, PSPButton.TRIANGLE, PSPButton.X
-            ),
+            throttle=_direction(self.buttons, PSPButton.TRIANGLE, PSPButton.X),
         )
 
 

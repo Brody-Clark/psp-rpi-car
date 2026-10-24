@@ -237,9 +237,7 @@ class ServerControlTests(unittest.TestCase):
         )
         receiver.start()
         try:
-            client_socket.sendall(
-                struct.pack("<IBB", PSPButton.TRIANGLE, 128, 128)
-            )
+            client_socket.sendall(struct.pack("<IBB", PSPButton.TRIANGLE, 128, 128))
             client_socket.sendall(struct.pack("<IBB", PSPButton.NONE, 128, 128))
             client_socket.shutdown(socket.SHUT_WR)
             receiver.join(timeout=2)
@@ -247,10 +245,13 @@ class ServerControlTests(unittest.TestCase):
             self.assertFalse(receiver.is_alive())
             self.assertEqual(self.controller.speed, self.config.drive_speed)
             self.assertFalse(self.controller.is_moving)
-            self.assertEqual(self.controller.calls[:2], [
-                ("set_direction", True),
-                ("start",),
-            ])
+            self.assertEqual(
+                self.controller.calls[:2],
+                [
+                    ("set_direction", True),
+                    ("start",),
+                ],
+            )
             self.assertEqual(self.controller.calls[-1], ("stop",))
         finally:
             client_socket.close()
@@ -259,9 +260,7 @@ class ServerControlTests(unittest.TestCase):
     def test_config_rejects_nonpositive_steps(self):
         config_path = Path(self.temp_dir.name) / "invalid.ini"
         config_path.write_text(
-            "[server]\n"
-            "[controls]\nsteering_step=0\n"
-            "[logging]\nenabled=false\n"
+            "[server]\n" "[controls]\nsteering_step=0\n" "[logging]\nenabled=false\n"
         )
 
         with self.assertRaisesRegex(ValueError, "step values must be positive"):
@@ -328,9 +327,7 @@ class ServerControlTests(unittest.TestCase):
 
         self.assertFalse(drive_thread.is_alive())
         pwm_outputs = [
-            value
-            for command, value in shield.writes
-            if command == FakeShield.CMD_PWM1
+            value for command, value in shield.writes if command == FakeShield.CMD_PWM1
         ]
         self.assertEqual(pwm_outputs, [0, 350, 570, 780, 1000])
         self.assertEqual(controller.state.drive_stage, DriveStage.CRUISING)

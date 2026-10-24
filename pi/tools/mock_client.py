@@ -134,7 +134,9 @@ def run_client(host: str, port: int) -> None:
                 try:
                     latest_frame = pygame.image.load(BytesIO(jpeg_data))
                 except pygame.error as error:
-                    raise RuntimeError(f"Could not decode server JPEG frame: {error}") from error
+                    raise RuntimeError(
+                        f"Could not decode server JPEG frame: {error}"
+                    ) from error
 
             window.fill((24, 24, 24))
             if latest_frame is not None:

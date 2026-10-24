@@ -14,7 +14,9 @@ class MockClientMappingTests(unittest.TestCase):
     def test_arrows_control_forward_reverse_and_space_brakes(self):
         self.assertEqual(buttons_from_keys({"up"}), PSPButton.TRIANGLE)
         self.assertEqual(buttons_from_keys({"down"}), PSPButton.X)
-        self.assertEqual(buttons_from_keys({"space", "up"}), PSPButton.CIRCLE | PSPButton.TRIANGLE)
+        self.assertEqual(
+            buttons_from_keys({"space", "up"}), PSPButton.CIRCLE | PSPButton.TRIANGLE
+        )
 
     def test_q_and_e_control_left_and_right_shoulders(self):
         self.assertEqual(buttons_from_keys({"q", "e"}), PSPButton.L | PSPButton.R)

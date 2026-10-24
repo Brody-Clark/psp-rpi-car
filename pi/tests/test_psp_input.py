@@ -11,12 +11,7 @@ from pi.psp_input import (
 
 class PSPInputTests(unittest.TestCase):
     def test_parses_wire_format_and_maps_all_requested_controls(self):
-        buttons = (
-            PSPButton.UP
-            | PSPButton.RIGHT
-            | PSPButton.R
-            | PSPButton.TRIANGLE
-        )
+        buttons = PSPButton.UP | PSPButton.RIGHT | PSPButton.R | PSPButton.TRIANGLE
         packet = struct.pack("<IBB", buttons, 121, 132)
 
         command = PSPInput.from_packet(packet)
