@@ -96,7 +96,7 @@ Inspect `pi/scripts/setup_server.sh` for the SSID and password defaults.
 > [!IMPORTANT]
 > keep note of the default SSID and password or change them if you want. These will be needed later to connect to the Pi from your PSP.
 
-Run the setup script from the extracted release folder:
+Run the setup script from the extracted release folder on the pi:
 
 ```bash
 sudo bash ./pi-car-server/scripts/setup_server.sh
