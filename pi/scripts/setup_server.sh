@@ -39,7 +39,7 @@ wmm_enabled=0
 macaddr_acl=0
 auth_algs=1
 ignore_broadcast_ssid=0
-wpa=2
+wpa=1
 wpa_passphrase=$PASSPHRASE
 wpa_key_mgmt=WPA-PSK
 rsn_pairwise=CCMP
@@ -72,6 +72,7 @@ WantedBy=multi-user.target
 EOF
 sudo systemctl daemon-reload
 sudo systemctl enable --now psp-rpi-car.service
+sudo systemctl restart hostapd dnsmasq
 
 echo "Setup complete"
 echo "Host SSID: '$SSID'"
