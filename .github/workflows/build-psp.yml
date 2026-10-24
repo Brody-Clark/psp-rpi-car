@@ -15,7 +15,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Uses the official pre-built PSPdev toolchain container environment
     container: ghcr.io/pspdev/pspdev:latest
 
     steps:
@@ -27,9 +26,9 @@ jobs:
           export PSPDEV=/usr/local/pspdev
           export PATH=$PATH:$PSPDEV/bin
           
-          # Navigate to your PSP source directory and build
+          cd psp-rpi-car
           cd psp
-          psp-cmake ..
+          psp-cmake 
           make
 
       - name: Upload EBOOT Artifact
