@@ -17,7 +17,7 @@ psp-rpi-car (PSP-Raspberry Pi Car) demonstrates the usage of a Sony PSP, along w
 
 ## Overview
 
-This project provides a small PSP application (EBOOT.PBP) and a Raspberry Pi server that together demonstrate two-way data transfer: PSP button inputs can be sent to the Pi, and the Pi can stream camera and sensor data back to the PSP. This project uses the Rapsberry Pi server as a driver for a Freenove three-wheeled car but can be repurposed for other uses such as drones, IoT devices, and other robotics projects.
+This project provides a small PSP application (EBOOT.PBP) and a Raspberry Pi server that together demonstrate two-way data transfer: PSP button inputs can be sent to the Pi, and the Pi can stream camera and sensor data back to the PSP. This project uses the Raspberry Pi server as a driver for a Freenove three-wheeled car but can be repurposed for other uses such as drones, IoT devices, and other robotics projects.
 
 ## Project Structure
 
@@ -48,7 +48,7 @@ The PSP client reads controller input, sends six-byte control packets, receives
 JPEG frames, and presents the camera image. Its modules separate input,
 networking, video decoding, display, and PSP lifecycle responsibilities.
 
-The client is built with PSPSDK libraries. It uses PSP GU for utility-dialog
+The client is built with the PSPSDK libraries. It uses PSPGU for utility-dialog
 rendering, PSP networking libraries for the connection, and PSP JPEG/MPEG
 libraries for video decoding.
 
@@ -74,7 +74,7 @@ documents the packet formats.
 - A Raspberry Pi running Raspberry Pi OS (tested on Pi 3/Pi 4)
 - The Freenove three-wheeled car kit and shield (Can be purchased from the official Freenove store [here](https://store.freenove.com/products/fnk0021?srsltid=AU7gw4WxGUVLTF7dpSA2eTFnrtBII-kZL_LF3ODinYbY7OUMYRSHbQqb))
 - A USB camera supported by OpenCV (Should be included in Freenove kit)
-- A Sony PSP capable of running homebrew or usigned EBOOT.PBP files
+- A Sony PSP capable of running homebrew or unsigned EBOOT.PBP files
 - A way to transfer files to the PSP memory stick
 - Ethernet or a second Wi-Fi adapter if you need remote access while the Pi's
   built-in Wi-Fi is configured as an access point
