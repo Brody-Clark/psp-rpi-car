@@ -1,0 +1,37 @@
+name: Test PSP Protocol
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "psp/include/protocol.h"
+      - "psp/tests/**"
+      - ".github/workflows/test-psp-protocol.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "psp/include/protocol.h"
+      - "psp/tests/**"
+      - ".github/workflows/test-psp-protocol.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    name: PSP protocol unit tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Configure tests
+        run: cmake -S psp/tests -B build/psp-tests
+
+      - name: Build tests
+        run: cmake --build build/psp-tests --parallel
+
+      - name: Run tests
+        run: ctest --test-dir build/psp-tests --output-on-failure
