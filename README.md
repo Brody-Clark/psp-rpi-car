@@ -75,10 +75,11 @@ documents the packet formats.
 - The Freenove three-wheeled car kit and shield (Can be purchased from the official Freenove store [here](https://store.freenove.com/products/fnk0021?srsltid=AU7gw4WxGUVLTF7dpSA2eTFnrtBII-kZL_LF3ODinYbY7OUMYRSHbQqb))
 - A USB camera supported by OpenCV (Should be included in Freenove kit)
 - A Sony PSP capable of running homebrew or unsigned EBOOT.PBP files
-- A way to transfer files to the PSP memory stick
+- A way to transfer files to the PSP memory stick such as a USB cable
 - Ethernet or a second Wi-Fi adapter if you need remote access while the Pi's
   built-in Wi-Fi is configured as an access point
-- pspsdk toolchain (only needed if building from source)
+
+Additionally, you may want to install the pspsdk toolchain if building this project from source.
 
 ## Getting Started
 
