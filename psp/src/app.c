@@ -15,9 +15,6 @@
 static uint32_t pixel_buffer[PSP_SCREEN_WIDTH * PSP_SCREEN_HEIGHT]
 	__attribute__((aligned(64)));
 
-/**
- * Own subsystem startup, frame processing, and reverse-order shutdown.
- */
 int app_run(void)
 {
 	bool platform_ready = false;
