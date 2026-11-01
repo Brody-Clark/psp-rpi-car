@@ -1,7 +1,7 @@
 #ifndef PSP_CONFIG_H
 #define PSP_CONFIG_H
 
-#define PSP_SERVER_IP "192.168.4.1"
+#define PSP_SERVER_IP "192.168.2.1" // This must match what is configured in server_setup.sh
 #define PSP_SERVER_PORT 12345
 #define PSP_SERVER_CONNECT_TIMEOUT_SECONDS 30
 

@@ -2,7 +2,7 @@
 set -e
 
 SSID="PSP_NET_BRIDGE"
-PASSPHRASE="password123"
+PASSPHRASE="psp-rpi-car"
 WLAN_IFACE="wlan0"
 STATIC_IP="192.168.2.1"
 SERVER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -63,6 +63,7 @@ After=network.target hostapd.service dnsmasq.service
 Type=simple
 User=$SERVER_USER
 WorkingDirectory=$SERVER_DIR
+ExecStartPre=+/usr/bin/systemctl restart hostapd.service dnsmasq.service
 ExecStart=/usr/bin/python3 $SERVER_DIR/server.py --config $SERVER_DIR/server.ini
 Restart=on-failure
 RestartSec=2

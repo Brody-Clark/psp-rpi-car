@@ -2,7 +2,7 @@
 # PSP Client Protocol
 
 The PSP client and Raspberry Pi server use one TCP connection to the server's
-configured address (`192.168.4.1:12345` by default). The connection carries
+configured address (`192.168.2.1:12345` by default). The connection carries
 controller commands from the PSP and video frames from the Pi.
 
 ## Controller command (PSP to Pi)

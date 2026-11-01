@@ -431,6 +431,10 @@ bool network_connect_access_point(void)
     bool shutdown_started = false;
 	while (!complete)
 	{
+		if(!platform_is_running())
+		{
+			return false;
+		}
 		if (!display_begin_utility_frame())
 		{
 			platform_log("Could not prepare a frame for the network dialog.\n");
