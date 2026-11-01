@@ -19,6 +19,14 @@ else:
     from psp_input import ControlDirection, PSPButton, PSPInput
     from robot_controller import RobotController
 
+###############################################
+# Edit these variables if servos are reversed
+###############################################
+SERVO_1_REVERSED = True     # Vehicle Heading
+SERVO_2_REVERSED = True     # Camera Horizontal
+SERVO_3_REVERSED = True     # Camera Vertical
+###############################################
+
 
 @dataclass(frozen=True)
 class ServerConfig:
@@ -461,7 +469,10 @@ def main() -> None:
     config = load_config(args.config.resolve())
     logger = configure_logging(config)
     controller = RobotController(
-        acceleration_duration_ms=config.acceleration_duration_ms
+        servo1_reversed=SERVO_1_REVERSED,
+        servo2_reversed=SERVO_2_REVERSED,
+        servo3_reversed=SERVO_3_REVERSED,
+        acceleration_duration_ms=config.acceleration_duration_ms,
     )
     try:
         controller.set_speed(config.drive_speed)

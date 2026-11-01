@@ -213,10 +213,19 @@ Check that the Pi access point and server service are running. Confirm the
 configured SSID and password and verify the client and server use the same TCP
 port.
 
-If the access point stops working after setup, restart its services:
+The server service restarts the access-point services before starting. If you
+already installed the server, add this line to
+`/etc/systemd/system/psp-rpi-car.service` under `[Service]`:
 
 ```bash
-sudo systemctl restart hostapd dnsmasq
+ExecStartPre=+/usr/bin/systemctl restart hostapd.service dnsmasq.service
+```
+
+Then reload the unit and restart the server:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart psp-rpi-car.service
 ```
 
 ### Remote Access to the Pi Is Unavailable
@@ -228,7 +237,23 @@ Ethernet or a second Wi-Fi adapter to keep remote access.
 
 Check that the USB camera is connected and available at the configured device.
 Review the service logs for OpenCV camera errors and confirm the requested
-resolution is supported by the camera.
+resolution is supported by the camera. Low battery power may also prevent
+the camera device from functioning correctly.
+
+### The Servo Controls Are Reversed
+
+Edit these variables in [pi/server.py](./pi/server.py) at the top of the file:
+```py
+SERVO_1_REVERSED # Vehicle heading
+SERVO_2_REVERSED # Camera horizontal
+SERVO_3_REVERSED # Camera vertical
+```
+
+Then restart the service:
+
+```bash
+sudo systemctl restart psp-rpi-car
+```
 
 ## Development
 

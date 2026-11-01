@@ -141,7 +141,6 @@ int app_run(void)
 	}
 
 cleanup:
-	platform_wait_s(2);
 	if (network_ready)
 	{
 		network_shutdown();
@@ -154,7 +153,7 @@ cleanup:
 	{
 		display_shutdown();
 	}
-	if (platform_ready)
+	if(platform_ready)
 	{
 		platform_shutdown();
 	}

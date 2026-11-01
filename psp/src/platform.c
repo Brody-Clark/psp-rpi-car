@@ -6,7 +6,7 @@
 #include <pspdebug.h>
 #include <pspkernel.h>
 
-static volatile int application_running;
+static volatile bool application_running;
 static volatile int callback_thread_status;
 
 static int exit_callback(int argument_1, int argument_2, void *common)
@@ -14,7 +14,7 @@ static int exit_callback(int argument_1, int argument_2, void *common)
 	(void)argument_1;
 	(void)argument_2;
 	(void)common;
-	application_running = 0;
+	application_running = false;
 	return 0;
 }
 
@@ -29,14 +29,14 @@ static int callback_thread(SceSize argument_size, void *argument)
 	if (callback_id < 0)
 	{
 		callback_thread_status = -1;
-		application_running = 0;
+		application_running = false;
 		return callback_id;
 	}
 	if (sceKernelRegisterExitCallback(callback_id) < 0)
 	{
 		sceKernelDeleteCallback(callback_id);
 		callback_thread_status = -1;
-		application_running = 0;
+		application_running = false;
 		return -1;
 	}
 
@@ -58,7 +58,7 @@ bool platform_initialize(void)
 	pspDebugScreenInit();
 	pspDebugScreenSetXY(0, 0);
 	pspDebugScreenClear();
-	application_running = 1;
+	application_running = true;
 	callback_thread_status = 0;
 
 	callback_thread_id = sceKernelCreateThread(
@@ -85,7 +85,7 @@ bool platform_initialize(void)
 	if (callback_thread_status != 1)
 	{
 		platform_log("Could not register the PSP exit callback.\n");
-		application_running = 0;
+		application_running = false;
 		SceUInt timeout = 100000;
 		if (sceKernelWaitThreadEnd(callback_thread_id, &timeout) < 0)
 		{
@@ -103,17 +103,17 @@ bool platform_initialize(void)
 
 bool platform_is_running(void)
 {
-	return application_running != 0;
+	return application_running;
 }
 
 void platform_request_exit(void)
 {
-	application_running = 0;
+	application_running = false;
 }
 
 void platform_shutdown(void)
 {
-	application_running = 0;
+	application_running = false;
 	sceKernelExitGame();
 }
 
