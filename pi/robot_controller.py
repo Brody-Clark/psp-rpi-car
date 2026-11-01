@@ -26,9 +26,9 @@ class RobotController:
 
     def __init__(
         self,
-        servo1_reversed=True,
-        servo2_reversed=True,
-        servo3_reversed=True,
+        servo1_reversed=False,
+        servo2_reversed=False,
+        servo3_reversed=False,
         shield: Optional[ShieldDriver] = None,
         acceleration_duration_ms=300,
     ):

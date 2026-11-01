@@ -298,6 +298,45 @@ class ServerControlTests(unittest.TestCase):
             ],
         )
 
+    def test_robot_controller_applies_persistent_state_to_shield_with_reversed_servos(
+        self,
+    ):
+        shield = FakeShield()
+        controller = RobotController(
+            servo1_reversed=True,
+            servo2_reversed=True,
+            servo3_reversed=True,
+            shield=shield,
+        )
+
+        controller.set_direction(False)
+        controller.set_speed(10)
+        controller.adjust_steering(-5)
+        controller.start()
+
+        self.assertEqual(controller.state.speed, 10)
+        self.assertFalse(controller.state.is_forward)
+        self.assertTrue(controller.state.is_moving)
+        self.assertEqual(controller.state.steering_angle, 85)
+        self.assertEqual(
+            shield.writes,
+            [
+                (FakeShield.CMD_DIR1, 0),
+                (FakeShield.CMD_DIR2, 0),
+                (FakeShield.CMD_PWM1, 0),
+                (FakeShield.CMD_PWM2, 0),
+                (FakeShield.CMD_DIR1, 0),
+                (FakeShield.CMD_DIR2, 0),
+                (FakeShield.CMD_PWM1, 0),
+                (FakeShield.CMD_PWM2, 0),
+                (FakeShield.CMD_SERVO1, 1555),
+                (FakeShield.CMD_DIR1, 0),
+                (FakeShield.CMD_DIR2, 0),
+                (FakeShield.CMD_PWM1, 100),
+                (FakeShield.CMD_PWM2, 100),
+            ],
+        )
+
     def test_stop_zeros_pwm_but_preserves_configured_speed(self):
         shield = FakeShield()
         controller = RobotController(shield=shield)
