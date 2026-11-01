@@ -153,8 +153,10 @@ cleanup:
 	{
 		display_shutdown();
 	}
-	
-	platform_shutdown();
+	if(platform_ready)
+	{
+		platform_shutdown();
+	}
 
 	return result;
 }
