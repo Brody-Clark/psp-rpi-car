@@ -61,6 +61,7 @@ class ServerConfig:
     camera_tilt_step: int
     held_control_repeat_ms: int
     control_profile: ControlProfile
+    steering_center_angle: int
     drive_speed: int
     acceleration_duration_ms: int
     logging_enabled: bool
@@ -95,6 +96,9 @@ def load_config(config_path: Path) -> ServerConfig:
             "controls", "held_control_repeat_ms", fallback=100
         )
         control_profile = _load_control_profile(parser)
+        steering_center_angle = parser.getint(
+            "controls", "steering_center_angle", fallback=90
+        )
         drive_speed_level = parser.getint("controls", "drive_speed", fallback=1)
         acceleration_duration_ms = parser.getint(
             "controls", "acceleration_duration_ms", fallback=300
@@ -119,6 +123,8 @@ def load_config(config_path: Path) -> ServerConfig:
         raise ValueError("controls.held_control_repeat_ms must be positive")
     if acceleration_duration_ms < 1:
         raise ValueError("controls.acceleration_duration_ms must be positive")
+    if not 0 <= steering_center_angle <= 180:
+        raise ValueError("controls.steering_center_angle must be between 0 and 180")
     if not 1 <= drive_speed_level <= 10:
         raise ValueError("controls.drive_speed must be between 1 and 10")
     if not isinstance(logging.getLevelName(logging_level), int):
@@ -144,6 +150,7 @@ def load_config(config_path: Path) -> ServerConfig:
         camera_tilt_step=camera_tilt_step,
         held_control_repeat_ms=held_control_repeat_ms,
         control_profile=control_profile,
+        steering_center_angle=steering_center_angle,
         drive_speed=round(35 + (drive_speed_level - 1) * 65 / 9),  # map 1-10 to 35-100
         acceleration_duration_ms=acceleration_duration_ms,
         logging_enabled=logging_enabled,
@@ -548,6 +555,7 @@ def main() -> None:
         servo2_reversed=SERVO_2_REVERSED,
         servo3_reversed=SERVO_3_REVERSED,
         acceleration_duration_ms=config.acceleration_duration_ms,
+        steering_center_angle=config.steering_center_angle,
     )
     try:
         controller.set_speed(config.drive_speed)

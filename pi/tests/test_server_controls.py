@@ -265,6 +265,31 @@ class ServerControlTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "drive_speed must be between 1 and 10"):
             load_config(config_path)
 
+    def test_steering_center_angle_is_configurable_and_validated(self):
+        config_path = Path(self.temp_dir.name) / "steering-center.ini"
+        config_path.write_text("[controls]\nsteering_center_angle=160\n")
+        self.assertEqual(load_config(config_path).steering_center_angle, 160)
+
+        config_path.write_text("[controls]\nsteering_center_angle=181\n")
+        with self.assertRaisesRegex(
+            ValueError, "steering_center_angle must be between 0 and 180"
+        ):
+            load_config(config_path)
+
+    def test_robot_controller_uses_calibrated_steering_center(self):
+        shield = FakeShield()
+        controller = RobotController(shield=shield, steering_center_angle=160)
+
+        self.assertEqual(controller.state.steering_angle, 160)
+        controller.adjust_steering(-5)
+        controller.center_steering()
+
+        self.assertEqual(controller.state.steering_angle, 160)
+        self.assertEqual(shield.writes[-1], (FakeShield.CMD_SERVO1, 2277))
+
+        with self.assertRaisesRegex(ValueError, "steering_center_angle"):
+            RobotController(shield=FakeShield(), steering_center_angle=181)
+
     def test_socket_input_routes_commands_and_disconnect_stops_vehicle(self):
         server_socket, client_socket = socket.socketpair()
         stop_event = threading.Event()

@@ -31,7 +31,10 @@ class RobotController:
         servo3_reversed=False,
         shield: Optional[ShieldDriver] = None,
         acceleration_duration_ms=300,
+        steering_center_angle=90,
     ):
+        if not 0 <= steering_center_angle <= 180:
+            raise ValueError("steering_center_angle must be between 0 and 180")
         if shield is None:
             if __package__:
                 from .freenove.Server.mDev import mdev
@@ -40,10 +43,11 @@ class RobotController:
             shield = mdev
 
         self.mdev = shield
-        self.state = RobotState()
+        self.state = RobotState(steering_center_angle=steering_center_angle)
         self.servo1_reversed = servo1_reversed
         self.servo2_reversed = servo2_reversed
         self.servo3_reversed = servo3_reversed
+        self.steering_center_angle = steering_center_angle
         self.acceleration_duration_ms = max(1, acceleration_duration_ms)
         self._lock = threading.RLock()
         self._drive_generation = 0
@@ -141,8 +145,9 @@ class RobotController:
             self._apply_steering_locked()
 
     def center_steering(self):
-        self.state.steering_angle = 0
-        self._apply_steering()
+        with self._lock:
+            self.state.steering_angle = self.steering_center_angle
+            self._apply_steering_locked()
 
     def adjust_camera_pan(self, delta):
         with self._lock:

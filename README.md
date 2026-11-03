@@ -166,6 +166,7 @@ The config supports the following options:
 | `[video]` | `fps` | `15` | Requested camera frame rate |
 | `[controls]` | `drive_speed` | `5` | Speed level from 1 to 10 |
 | `[controls]` | `steering_step` | `5` | Steering angle change per repeat |
+| `[controls]` | `steering_center_angle` | `90` | Servo command angle for straight-ahead steering, from 0 to 180 |
 | `[controls]` | `camera_pan_step` | `5` | Camera pan change per repeat |
 | `[controls]` | `camera_tilt_step` | `5` | Camera tilt change per repeat |
 | `[controls]` | `held_control_repeat_ms` | `100` | Repeat interval for held directional controls |
@@ -179,6 +180,12 @@ The config supports the following options:
 | `[logging]` | `enabled` | `true` | Set to `false` to disable application logs |
 | `[logging]` | `level` | `INFO` | Log detail level such as `DEBUG`, `INFO`, or `WARNING` |
 | `[logging]` | `file` | ` ` | Optional log file path, relative to the INI file |
+
+`steering_center_angle` is the servo command that makes the wheels point
+straight, not a measured wheel angle. The servo command range remains 0–180, so
+a center calibrated at either endpoint leaves no command travel on one side;
+adjust the servo horn/linkage so straight-ahead is nearer the middle of its
+range when possible.
 
 Set the logging file option to an empty value to log to the service journal
 only. View service status with:

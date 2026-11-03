@@ -9,9 +9,9 @@ class DriveStage(Enum):
 
 class RobotState:
 
-    def __init__(self):
+    def __init__(self, steering_center_angle=90):
         self.speed = 0  # 0 to 100
-        self.steering_angle = 90  # 0 to 180 (90 is center)
+        self.steering_angle = steering_center_angle  # Servo command, 0 to 180
         self.camera_pan = 90  # 0 to 180 (90 is center)
         self.camera_tilt = 90  # 0 to 180 (90 is center)
         self.is_forward = True  # True = forward, False = backward
