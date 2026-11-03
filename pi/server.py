@@ -41,6 +41,10 @@ SERVO_2_REVERSED = True     # Camera Horizontal
 SERVO_3_REVERSED = True     # Camera Vertical
 ###############################################
 
+VIDEO_READ_FAILURE_LIMIT = 3
+VIDEO_REOPEN_INITIAL_DELAY_SECONDS = 0.5
+VIDEO_REOPEN_MAX_DELAY_SECONDS = 8.0
+
 
 @dataclass(frozen=True)
 class ServerConfig:
@@ -388,16 +392,47 @@ def _send_video_frames(
             config.video_fps,
         )
 
-        read_error_logged = False
+        consecutive_read_failures = 0
+        reopen_delay = VIDEO_REOPEN_INITIAL_DELAY_SECONDS
         while not stop_event.is_set():
             read_ok, frame = capture.read()
             if not read_ok:
-                if not read_error_logged:
+                consecutive_read_failures += 1
+                if consecutive_read_failures == 1:
                     logger.warning("OpenCV could not read a camera frame")
-                    read_error_logged = True
-                stop_event.wait(0.05)
+                if consecutive_read_failures < VIDEO_READ_FAILURE_LIMIT:
+                    stop_event.wait(0.05)
+                    continue
+
+                capture.release()
+                capture = None
+                while not stop_event.is_set():
+                    if stop_event.wait(reopen_delay):
+                        break
+                    try:
+                        cv2, capture = _open_video_capture(
+                            config.camera_device,
+                            config.video_width,
+                            config.video_height,
+                            config.video_fps,
+                        )
+                    except (OSError, RuntimeError) as error:
+                        logger.warning(
+                            "Could not reopen camera device %r: %s; retrying in %.1f seconds",
+                            config.camera_device,
+                            error,
+                            reopen_delay,
+                        )
+                        reopen_delay = min(
+                            reopen_delay * 2, VIDEO_REOPEN_MAX_DELAY_SECONDS
+                        )
+                    else:
+                        logger.info("Reopened camera device %r", config.camera_device)
+                        break
+                consecutive_read_failures = 0
                 continue
-            read_error_logged = False
+            consecutive_read_failures = 0
+            reopen_delay = VIDEO_REOPEN_INITIAL_DELAY_SECONDS
             frame = cv2.resize(
                 frame,
                 (config.video_width, config.video_height),

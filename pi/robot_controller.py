@@ -141,7 +141,7 @@ class RobotController:
             self._apply_steering_locked()
 
     def center_steering(self):
-        self.state.steering_angle = 90
+        self.state.steering_angle = 0
         self._apply_steering()
 
     def adjust_camera_pan(self, delta):

@@ -492,6 +492,71 @@ class ServerControlTests(unittest.TestCase):
         self.assertEqual(connection.packets, [struct.pack("!I", 4) + b"jpeg"])
         self.assertTrue(capture.released)
 
+    def test_video_stream_reopens_camera_after_consecutive_read_failures(self):
+        stop_event = threading.Event()
+
+        class FakeCapture:
+            def __init__(self, read_results, opened=True):
+                self.read_results = iter(read_results)
+                self.opened = opened
+                self.released = False
+
+            def isOpened(self):
+                return self.opened
+
+            def set(self, _property, _value):
+                return True
+
+            def read(self):
+                return next(self.read_results)
+
+            def release(self):
+                self.released = True
+
+        first_capture = FakeCapture([(False, None)] * 3)
+        failed_reopen = FakeCapture([], opened=False)
+        recovered_capture = FakeCapture([(True, b"frame")])
+        captures = iter((first_capture, failed_reopen, recovered_capture))
+        fake_cv2 = SimpleNamespace(
+            VideoCapture=lambda _device, _backend: next(captures),
+            CAP_V4L2=7,
+            CAP_PROP_WIDTH=3,
+            CAP_PROP_FOURCC=8,
+            CAP_PROP_FRAME_WIDTH=3,
+            CAP_PROP_FRAME_HEIGHT=4,
+            CAP_PROP_FPS=5,
+            IMWRITE_JPEG_QUALITY=6,
+            INTER_AREA=10,
+            VideoWriter_fourcc=lambda *_args: 9,
+            resize=lambda frame, _size, interpolation: frame,
+            imencode=lambda *_args: (True, SimpleNamespace(tobytes=lambda: b"jpeg")),
+        )
+
+        class FakeConnection:
+            def __init__(self):
+                self.packets = []
+
+            def sendall(self, packet):
+                self.packets.append(packet)
+                stop_event.set()
+
+        connection = FakeConnection()
+        with (
+            patch.dict(sys.modules, {"cv2": fake_cv2}),
+            patch("pi.server.VIDEO_REOPEN_INITIAL_DELAY_SECONDS", 0),
+        ):
+            stream_video(
+                connection,
+                stop_event,
+                replace(self.config, video_enabled=True),
+                self.logger,
+            )
+
+        self.assertTrue(first_capture.released)
+        self.assertTrue(failed_reopen.released)
+        self.assertTrue(recovered_capture.released)
+        self.assertEqual(connection.packets, [struct.pack("!I", 4) + b"jpeg"])
+
 
 if __name__ == "__main__":
     unittest.main()
