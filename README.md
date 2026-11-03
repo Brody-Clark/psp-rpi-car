@@ -138,6 +138,7 @@ connect to the Pi access point. Then launch **PSP_RPI_CAR** from
 | Triangle (hold) | Drive forward at the configured speed |
 | X (hold) | Drive in reverse at the configured speed |
 | Circle | Stop the motors |
+| Square | Center the steering |
 | HOME | Exit the application |
 
 ## Raspberry Pi Server Configuration
@@ -169,6 +170,12 @@ The config supports the following options:
 | `[controls]` | `camera_tilt_step` | `5` | Camera tilt change per repeat |
 | `[controls]` | `held_control_repeat_ms` | `100` | Repeat interval for held directional controls |
 | `[controls]` | `acceleration_duration_ms` | `300` | Duration of the controller acceleration ramp |
+| `[controls]` | `camera_pan_positive` / `camera_pan_negative` | `RIGHT` / `LEFT` | Buttons that pan the camera right or left |
+| `[controls]` | `camera_tilt_positive` / `camera_tilt_negative` | `UP` / `DOWN` | Buttons that tilt the camera up or down |
+| `[controls]` | `steering_positive` / `steering_negative` | `R` / `L` | Buttons that steer right or left |
+| `[controls]` | `throttle_positive` / `throttle_negative` | `TRIANGLE` / `X` | Buttons for forward or reverse throttle |
+| `[controls]` | `brake` | `CIRCLE` | Button that stops the motors |
+| `[controls]` | `center_steering` | `SQUARE` | Button that centers the steering when pressed |
 | `[logging]` | `enabled` | `true` | Set to `false` to disable application logs |
 | `[logging]` | `level` | `INFO` | Log detail level such as `DEBUG`, `INFO`, or `WARNING` |
 | `[logging]` | `file` | ` ` | Optional log file path, relative to the INI file |

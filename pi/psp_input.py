@@ -1,8 +1,8 @@
-"""Typed PSP controller packet parsing and vehicle-control mapping."""
+"""Typed parsing for raw PSP controller packets."""
 
 import struct
 from dataclasses import dataclass
-from enum import IntEnum, IntFlag
+from enum import IntFlag
 
 
 class PSPButton(IntFlag):
@@ -18,25 +18,7 @@ class PSPButton(IntFlag):
     TRIANGLE = 0x00001000
     CIRCLE = 0x00002000
     X = 0x00004000
-
-
-class ControlDirection(IntEnum):
-    """A normalized control direction."""
-
-    NEGATIVE = -1
-    NEUTRAL = 0
-    POSITIVE = 1
-
-
-@dataclass(frozen=True)
-class VehicleControls:
-    """Normalized controls with positive meaning right, up, right, and forward."""
-
-    camera_horizontal: ControlDirection
-    camera_vertical: ControlDirection
-    steering: ControlDirection
-    throttle: ControlDirection
-
+    SQUARE = 0x008000
 
 @dataclass(frozen=True)
 class PSPInput:
@@ -54,28 +36,3 @@ class PSPInput:
 
         buttons, analog_x, analog_y = struct.unpack("<IBB", packet)
         return cls(PSPButton(buttons), analog_x, analog_y)
-
-    @property
-    def controls(self) -> VehicleControls:
-        """Map PSP buttons to camera, vehicle heading, and throttle controls."""
-        return VehicleControls(
-            camera_horizontal=_direction(self.buttons, PSPButton.RIGHT, PSPButton.LEFT),
-            camera_vertical=_direction(self.buttons, PSPButton.UP, PSPButton.DOWN),
-            steering=_direction(self.buttons, PSPButton.R, PSPButton.L),
-            throttle=_direction(self.buttons, PSPButton.TRIANGLE, PSPButton.X),
-        )
-
-
-def _direction(
-    buttons: PSPButton,
-    positive_button: PSPButton,
-    negative_button: PSPButton,
-) -> ControlDirection:
-    positive_pressed = bool(buttons & positive_button)
-    negative_pressed = bool(buttons & negative_button)
-
-    if positive_pressed == negative_pressed:
-        return ControlDirection.NEUTRAL
-    if positive_pressed:
-        return ControlDirection.POSITIVE
-    return ControlDirection.NEGATIVE

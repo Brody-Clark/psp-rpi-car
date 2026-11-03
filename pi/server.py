@@ -13,10 +13,24 @@ from pathlib import Path
 from typing import Optional
 
 if __package__:
-    from .psp_input import ControlDirection, PSPButton, PSPInput
+    from .control_mapping import (
+        CONTROL_PROFILE_FIELDS,
+        DEFAULT_CONTROL_PROFILE,
+        ControlDirection,
+        ControlProfile,
+        VehicleControls,
+    )
+    from .psp_input import PSPButton, PSPInput
     from .robot_controller import RobotController
 else:
-    from psp_input import ControlDirection, PSPButton, PSPInput
+    from control_mapping import (
+        CONTROL_PROFILE_FIELDS,
+        DEFAULT_CONTROL_PROFILE,
+        ControlDirection,
+        ControlProfile,
+        VehicleControls,
+    )
+    from psp_input import PSPButton, PSPInput
     from robot_controller import RobotController
 
 ###############################################
@@ -42,6 +56,7 @@ class ServerConfig:
     camera_pan_step: int
     camera_tilt_step: int
     held_control_repeat_ms: int
+    control_profile: ControlProfile
     drive_speed: int
     acceleration_duration_ms: int
     logging_enabled: bool
@@ -66,8 +81,8 @@ def load_config(config_path: Path) -> ServerConfig:
             if camera_device_setting.isdecimal()
             else camera_device_setting
         )
-        video_width = parser.getint("video", "width", fallback=480)
-        video_height = parser.getint("video", "height", fallback=272)
+        video_width = parser.getint("video", "width", fallback=640)
+        video_height = parser.getint("video", "height", fallback=480)
         video_fps = parser.getfloat("video", "fps", fallback=15)
         steering_step = parser.getint("controls", "steering_step", fallback=5)
         camera_pan_step = parser.getint("controls", "camera_pan_step", fallback=5)
@@ -75,6 +90,7 @@ def load_config(config_path: Path) -> ServerConfig:
         held_control_repeat_ms = parser.getint(
             "controls", "held_control_repeat_ms", fallback=100
         )
+        control_profile = _load_control_profile(parser)
         drive_speed_level = parser.getint("controls", "drive_speed", fallback=1)
         acceleration_duration_ms = parser.getint(
             "controls", "acceleration_duration_ms", fallback=300
@@ -84,7 +100,7 @@ def load_config(config_path: Path) -> ServerConfig:
         logging_file_setting = parser.get(
             "logging", "file", fallback="logs/server.log"
         ).strip()
-    except configparser.Error as error:
+    except (configparser.Error, ValueError) as error:
         raise ValueError(f"Invalid setting in {config_path}: {error}") from error
 
     if not 1 <= port <= 65535:
@@ -123,12 +139,34 @@ def load_config(config_path: Path) -> ServerConfig:
         camera_pan_step=camera_pan_step,
         camera_tilt_step=camera_tilt_step,
         held_control_repeat_ms=held_control_repeat_ms,
+        control_profile=control_profile,
         drive_speed=round(35 + (drive_speed_level - 1) * 65 / 9),  # map 1-10 to 35-100
         acceleration_duration_ms=acceleration_duration_ms,
         logging_enabled=logging_enabled,
         logging_level=logging_level,
         logging_file=logging_file,
     )
+
+
+def _load_control_profile(parser: configparser.ConfigParser) -> ControlProfile:
+    """Load button bindings, defaulting to the standard PSP layout."""
+    bindings = {}
+    for setting in CONTROL_PROFILE_FIELDS:
+        default = getattr(DEFAULT_CONTROL_PROFILE, setting)
+        button_name = parser.get("controls", setting, fallback=default.name).strip()
+        try:
+            button = PSPButton[button_name.upper()]
+        except KeyError as error:
+            valid_buttons = ", ".join(
+                button.name for button in PSPButton if button is not PSPButton.NONE
+            )
+            raise ValueError(
+                f"controls.{setting} must be one PSP button: {valid_buttons}"
+            ) from error
+        if button is PSPButton.NONE:
+            raise ValueError(f"controls.{setting} cannot be NONE")
+        bindings[setting] = button
+    return ControlProfile(**bindings)
 
 
 def configure_logging(config: ServerConfig) -> logging.Logger:
@@ -173,9 +211,10 @@ def handle_input_command(
     if current_time is None:
         current_time = time.monotonic()
 
-    controls = command.controls
-    previous_direction = _drive_direction(previous_buttons)
-    current_direction = _drive_direction(command.buttons)
+    controls = config.control_profile.map_input(command)
+    previous_controls = config.control_profile.map_buttons(previous_buttons)
+    previous_direction = _drive_direction(previous_controls)
+    current_direction = _drive_direction(controls)
 
     repeat_interval = config.held_control_repeat_ms / 1000
     _repeat_control(
@@ -205,6 +244,9 @@ def handle_input_command(
         current_time,
         repeat_interval,
     )
+
+    if controls.center_steering and not previous_controls.center_steering:
+        controller.center_steering()
 
     if current_direction != previous_direction:
         if current_direction is None:
@@ -250,16 +292,14 @@ def _repeat_control(
         timers[name] = (direction, current_time + repeat_interval_seconds)
 
 
-def _drive_direction(buttons: PSPButton) -> Optional[bool]:
+def _drive_direction(controls: VehicleControls) -> Optional[bool]:
     """Return forward/reverse motion, or None when throttle is released/braked."""
-    if buttons & PSPButton.CIRCLE:
+    if controls.brake:
         return None
 
-    triangle_pressed = bool(buttons & PSPButton.TRIANGLE)
-    x_pressed = bool(buttons & PSPButton.X)
-    if triangle_pressed == x_pressed:
+    if controls.throttle is ControlDirection.NEUTRAL:
         return None
-    return triangle_pressed
+    return controls.throttle is ControlDirection.POSITIVE
 
 
 def receive_inputs(

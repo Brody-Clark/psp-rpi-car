@@ -199,7 +199,7 @@ class RobotController:
         if self.servo1_reversed:
             angle = 180 - angle
 
-        pwm_val = self._num_map(angle, 0, 180, 500, 2500)
+        pwm_val = self._num_map(angle, 0, 180, 450, 2450)
         self.mdev.writeReg(self.mdev.CMD_SERVO1, pwm_val)
 
     def _apply_camera(self):
@@ -218,5 +218,5 @@ class RobotController:
             else 180 - self.state.camera_tilt
         )
 
-        self.mdev.writeReg(self.mdev.CMD_SERVO2, self._num_map(pan, 0, 180, 500, 2500))
-        self.mdev.writeReg(self.mdev.CMD_SERVO3, self._num_map(tilt, 0, 180, 500, 2500))
+        self.mdev.writeReg(self.mdev.CMD_SERVO2, self._num_map(pan, 0, 180, 450, 2450))
+        self.mdev.writeReg(self.mdev.CMD_SERVO3, self._num_map(tilt, 0, 180, 450, 2450))

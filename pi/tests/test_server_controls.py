@@ -10,6 +10,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from pi.control_mapping import ControlDirection
 from pi.psp_input import PSPButton, PSPInput
 from pi.robot_controller import RobotController
 from pi.robot_state import DriveStage
@@ -70,6 +71,10 @@ class FakeRobotController:
     def adjust_steering(self, delta):
         self.steering_angle = max(0, min(180, self.steering_angle + delta))
         self.calls.append(("adjust_steering", delta))
+
+    def center_steering(self):
+        self.steering_angle = 90
+        self.calls.append(("center_steering",))
 
     def adjust_camera_pan(self, delta):
         self.camera_pan = max(0, min(180, self.camera_pan + delta))
@@ -153,6 +158,44 @@ class ServerControlTests(unittest.TestCase):
             self.controller.calls,
             [("adjust_camera_pan", -3), ("adjust_camera_pan", 3)],
         )
+
+    def test_square_centers_steering_once_per_press(self):
+        self.controller.steering_angle = 60
+        previous = self.apply(PSPButton.SQUARE)
+        self.apply(PSPButton.SQUARE, previous=previous, now=0.01)
+
+        self.assertEqual(self.controller.steering_angle, 90)
+        self.assertEqual(self.controller.calls, [("center_steering",)])
+
+        self.apply(PSPButton.NONE, previous=previous, now=0.02)
+        self.apply(PSPButton.SQUARE, now=0.03)
+        self.assertEqual(self.controller.calls.count(("center_steering",)), 2)
+
+    def test_control_buttons_can_be_remapped_in_config(self):
+        config_path = Path(self.temp_dir.name) / "remapped.ini"
+        config_path.write_text(
+            "[controls]\n"
+            "camera_pan_positive=UP\n"
+            "camera_pan_negative=DOWN\n"
+            "center_steering=TRIANGLE\n"
+        )
+
+        config = load_config(config_path)
+        controls = config.control_profile.map_input(self.make_input(PSPButton.UP))
+        self.assertIs(controls.camera_horizontal, ControlDirection.POSITIVE)
+        self.assertFalse(controls.center_steering)
+
+        controls = config.control_profile.map_input(
+            self.make_input(PSPButton.TRIANGLE)
+        )
+        self.assertTrue(controls.center_steering)
+
+    def test_control_button_config_rejects_unknown_button(self):
+        config_path = Path(self.temp_dir.name) / "invalid-button.ini"
+        config_path.write_text("[controls]\ncenter_steering=START\n")
+
+        with self.assertRaisesRegex(ValueError, "controls.center_steering"):
+            load_config(config_path)
 
     def test_holding_forward_uses_set_speed_and_release_preserves_it(self):
         previous = self.apply(PSPButton.TRIANGLE)
